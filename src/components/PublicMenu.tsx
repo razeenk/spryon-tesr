@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { uuidv4 } from "@/lib/utils";
 
 function MarqueeText({ text, style }: { text: string; style?: React.CSSProperties }) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -215,10 +216,10 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
                     if (parsed && Date.now() - parsed.lastActivity < EXPIRY_MS) {
                         scanKey = parsed.key; // still active — reuse
                     } else {
-                        scanKey = crypto.randomUUID(); // expired or first visit — new scan
+                        scanKey = uuidv4(); // expired or first visit — new scan
                     }
                 } catch {
-                    scanKey = crypto.randomUUID();
+                    scanKey = uuidv4();
                 }
                 localStorage.setItem(lsKey, JSON.stringify({ key: scanKey, lastActivity: Date.now() }));
 
