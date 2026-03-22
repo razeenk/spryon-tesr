@@ -1,4 +1,17 @@
 {
-    "binding": "WORKER_SELF_REFERENCE",
-    "service": "spryon-tesr"
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "spryon-tesr",
+    "compatibility_date": "2025-09-27",
+    "compatibility_flags": [
+        "nodejs_compat"
+    ],
+    "observability": {
+        "enabled": true
+    },
+    "services": [
+        {
+            "binding": "WORKER_SELF_REFERENCE",
+            "service": "spryon-tesr"
+        }
+    ]
 }

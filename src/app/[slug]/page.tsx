@@ -131,11 +131,25 @@ function ShareButton({ accent, slug, platformUrl }: { accent: string; slug: stri
 // ─── Item detail modal (bottom sheet) ────────────────────────────────────────
 function ItemModal({ item, accent, restaurantName, currencySymbol, onClose }: { item: MenuItem; accent: string; restaurantName: string; currencySymbol: string; onClose: () => void }) {
     useEffect(() => {
-        const prev = document.body.style.overflow;
+        const scrollY = window.scrollY;
+        const prev = {
+            overflow: document.body.style.overflow,
+            position: document.body.style.position,
+            top: document.body.style.top,
+            width: document.body.style.width
+        };
+        document.body.style.position = "fixed";
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = "100%";
         document.body.style.overflow = "hidden";
-        const onTouch = (e: TouchEvent) => { if ((e.target as HTMLElement).closest(".modal-sheet")) return; e.preventDefault(); };
-        document.addEventListener("touchmove", onTouch, { passive: false });
-        return () => { document.body.style.overflow = prev; document.removeEventListener("touchmove", onTouch); };
+        
+        return () => {
+            document.body.style.position = prev.position;
+            document.body.style.top = prev.top;
+            document.body.style.width = prev.width;
+            document.body.style.overflow = prev.overflow;
+            window.scrollTo(0, scrollY);
+        };
     }, []);
 
     const marqueeText = `${restaurantName} ✦ `;
@@ -143,7 +157,7 @@ function ItemModal({ item, accent, restaurantName, currencySymbol, onClose }: { 
 
     return (
         <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadein 0.15s ease" }}>
-            <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ background: "white", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: "720px", overflow: "hidden", animation: "slideup 0.2s ease" }}>
+            <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ background: "white", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: "720px", overflowY: "auto", maxHeight: "92vh", overscrollBehavior: "contain", animation: "slideup 0.2s ease" }}>
                 {/* Marquee banner */}
                 <div style={{ background: accent, overflow: "hidden", padding: "9px 0" }}>
                     <div style={{ display: "flex", whiteSpace: "nowrap", animation: "marquee 14s linear infinite", willChange: "transform" }}>
