@@ -259,6 +259,17 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
             document.head.appendChild(meta);
         }
         meta.content = r.page_description?.trim() || `Browse the full menu at ${r.name}`;
+
+        if (r.logo_url) {
+            let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+            if (!link) {
+                link = document.createElement("link");
+                link.rel = "icon";
+                document.head.appendChild(link);
+            }
+            link.href = r.logo_url.startsWith("http") ? r.logo_url : `${API}${r.logo_url}`;
+        }
+
         return () => { document.title = 'Spryon'; };
     }, [data]);
 

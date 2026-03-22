@@ -257,7 +257,7 @@ export default function PublicRestaurantPage({ params }: { params: Promise<{ slu
         })();
     }, [slug]);
 
-    // Browser title + meta description
+    // Browser title + meta description + favicon
     useEffect(() => {
         if (!data?.restaurant) return;
         const r = data.restaurant;
@@ -265,6 +265,17 @@ export default function PublicRestaurantPage({ params }: { params: Promise<{ slu
         let meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
         if (!meta) { meta = document.createElement("meta"); meta.name = "description"; document.head.appendChild(meta); }
         meta.content = r.page_description?.trim() || `Browse the full menu at ${r.name}`;
+
+        if (r.logo_url) {
+            let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+            if (!link) {
+                link = document.createElement("link");
+                link.rel = "icon";
+                document.head.appendChild(link);
+            }
+            link.href = r.logo_url.startsWith("http") ? r.logo_url : `${API}${r.logo_url}`;
+        }
+
         return () => { document.title = "Spryon"; };
     }, [data]);
 
