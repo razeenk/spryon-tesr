@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useSearchParams } from "next/navigation";
 import { apiMe, apiUpdateRestaurantConfig, apiFetch } from "@/lib/api";
@@ -58,7 +58,7 @@ function SectionCard({ title, description, icon, children, action }: {
     );
 }
 
-export default function BioMenuPage() {
+function BioMenuContent() {
     const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<"config" | "analytics">(
         searchParams.get("tab") === "analytics" ? "analytics" : "config"
@@ -489,5 +489,13 @@ export default function BioMenuPage() {
                 </div>
             )}
         </DashboardLayout>
+    );
+}
+
+export default function BioMenuPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <BioMenuContent />
+        </Suspense>
     );
 }

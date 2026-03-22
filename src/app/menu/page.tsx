@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import { getToken, apiUploadImage, apiMe, apiUpdateRestaurantConfig, authHeaders } from "@/lib/api";
@@ -553,7 +553,7 @@ function ColorRow({ label, value, presets, onChange }: { label: string; value: s
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function MenuPage() {
+function MenuContent() {
     const searchParams = useSearchParams();
     const tabParam = searchParams.get("tab");
     const [activeTab, setActiveTab] = useState<"dishes" | "categories" | "config">(
@@ -1254,5 +1254,13 @@ export default function MenuPage() {
 
             <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} } @keyframes spin { to{transform:rotate(360deg)} }`}</style>
         </DashboardLayout>
+    );
+}
+
+export default function MenuPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <MenuContent />
+        </Suspense>
     );
 }

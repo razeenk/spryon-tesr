@@ -55,7 +55,7 @@ export function useDashboard() {
             const res = await fetch(`${API}/api/dashboard`, {
                 headers: authHeaders(),
             });
-            const json = await res.json<DashboardData & { ok: boolean; error?: string }>();
+            const json = await res.json() as DashboardData & { ok: boolean; error?: string };
             if (!res.ok || !json.ok) { setError(json.error ?? "Failed to load"); return; }
             setData(json);
         } catch (e) {

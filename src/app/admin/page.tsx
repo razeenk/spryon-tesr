@@ -35,7 +35,7 @@ export default function AdminDashboard() {
             apiAdminAnalytics(),
             apiAdminRestaurants({ status: "pending", page: "1" }),
         ]).then(([a, p]) => {
-            if (a.data) { setStats(a.data.stats as Stats); setTopRest(a.data.topRestaurants as Array<{ id: string; name: string; scans: number }>); }
+            if (a.data) { setStats(a.data.stats as unknown as Stats); setTopRest(a.data.topRestaurants as Array<{ id: string; name: string; scans: number }>); }
             if (p.data) setPending((p.data.restaurants as unknown[]));
             setLoading(false);
         });

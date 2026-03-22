@@ -87,7 +87,7 @@ export default function AnalyticsPage() {
                 method: "POST",
                 headers: authHeaders(),
             });
-            const json = await res.json<{ ok: boolean; message?: string; error?: string }>();
+            const json = await res.json() as { ok: boolean; message?: string; error?: string };
             setToast({ msg: json.message ?? json.error ?? "Done", ok: !!json.ok });
         } catch {
             setToast({ msg: "Network error", ok: false });
@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
                             {(data?.weeklyScans.every((d) => d.sessions === 0)) ? (
                                 <div style={{ height: "130px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "13.5px" }}>No sessions yet this week</div>
                             ) : (
-                                <BarChart data={(data?.weeklyScans ?? []) as Record<string, number | string>[]} valueKey="sessions" labelKey="day" />
+                                <BarChart data={(data?.weeklyScans ?? []) as unknown as Record<string, number | string>[]} valueKey="sessions" labelKey="day" />
                             )}
                         </div>
                     )}
@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
                             {!hasActivity ? (
                                 <div style={{ height: "130px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "13.5px" }}>No activity today yet</div>
                             ) : (
-                                <BarChart data={shownHours as Record<string, number | string>[]} valueKey="value" labelKey="hour" />
+                                <BarChart data={shownHours as unknown as Record<string, number | string>[]} valueKey="value" labelKey="hour" />
                             )}
                         </div>
                     )}
