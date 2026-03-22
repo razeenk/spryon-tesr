@@ -121,7 +121,8 @@ export default function TablesPage() {
     const activeCount = tables.filter((t) => t.active_sessions > 0).length;
     const totalScans = tables.reduce((s, t) => s + t.total_scans, 0);
 
-    const menuUrl = (qrToken: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/menu/${qrToken}`;
+    const origin = data?.platformUrl || (typeof window !== "undefined" ? window.location.origin : "https://spryon.app");
+    const menuUrl = (qrToken: string) => `${origin}/menu/${qrToken}`;
 
     const [downloadingQr, setDownloadingQr] = useState<string | null>(null);
     const [qrData, setQrData] = useState<{ id: string, label: string, url: string } | null>(null);

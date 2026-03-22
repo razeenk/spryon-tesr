@@ -24,7 +24,7 @@ interface Restaurant {
     logo_url: string | null; social_links: SocialLinks | null; theme: Theme | null;
     is_open?: number; location_url?: string | null; currency?: string | null;
 }
-interface MenuData { ok: boolean; restaurant: Restaurant; items: MenuItem[]; categories: Category[]; }
+interface MenuData { ok: boolean; restaurant: Restaurant; items: MenuItem[]; categories: Category[]; platformUrl?: string; }
 
 const ALLERGENS: Record<string, string> = { gluten: "🌾", dairy: "🥛", nuts: "🥜", eggs: "🥚", soy: "🫘", seafood: "🦐", sesame: "🌿" };
 
@@ -100,9 +100,10 @@ const SOCIAL: Record<string, React.ReactNode> = {
 };
 
 // ─── Share button (replaces table number) ────────────────────────────────────
-function ShareButton({ accent, slug }: { accent: string; slug: string }) {
+function ShareButton({ accent, slug, platformUrl }: { accent: string; slug: string; platformUrl?: string }) {
     const [copied, setCopied] = useState(false);
-    const url = typeof window !== "undefined" ? window.location.href : `https://spryon.app/${slug}`;
+    const origin = platformUrl || (typeof window !== "undefined" ? window.location.origin : "https://spryon.app");
+    const url = `${origin}/${slug}`;
 
     const handleShare = async () => {
         track("share_click", slug);
@@ -392,7 +393,7 @@ export default function PublicRestaurantPage({ params }: { params: Promise<{ slu
                                 </div>
                             </div>
                             {/* Right: share button (replaces table number) */}
-                            <ShareButton accent={accent} slug={slug} />
+                            <ShareButton accent={accent} slug={slug} platformUrl={data?.platformUrl} />
                         </div>
                     )}
 

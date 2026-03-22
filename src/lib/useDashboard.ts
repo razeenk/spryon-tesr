@@ -41,6 +41,7 @@ export interface DashboardData {
         status: 'active' | 'pending' | 'suspended' | 'banned';
         rejection_reason: string | null;
     };
+    platformUrl?: string;
 }
 
 export function useDashboard() {

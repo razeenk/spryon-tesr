@@ -103,6 +103,7 @@ export interface MeResponse {
     phone?: string;
     emailVerified: boolean;
     restaurant: RestaurantConfig | null;
+    platformUrl?: string;
 }
 
 export async function apiRegister(payload: RegisterPayload) {

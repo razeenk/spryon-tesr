@@ -77,6 +77,7 @@ function BioMenuContent() {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [saveError, setSaveError] = useState("");
+    const [platformUrl, setPlatformUrl] = useState("");
 
     // Analytics state
     const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -92,6 +93,7 @@ function BioMenuContent() {
                 if (r.page_title) setPageTitle(r.page_title as string);
                 if (r.page_description) setPageDesc(r.page_description as string);
                 if (r.location_url) setLocationUrl(r.location_url as string);
+                if (res.data.platformUrl) setPlatformUrl(res.data.platformUrl);
             }
         });
     }, []);
@@ -105,7 +107,7 @@ function BioMenuContent() {
         });
     }, [activeTab]);
 
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://spryon.app";
+    const origin = platformUrl || (typeof window !== "undefined" ? window.location.origin : "https://spryon.app");
     const publicUrl = `${origin}/${restaurantSlug || "your-slug"}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(publicUrl)}&size=200x200&margin=10&color=111827&bgcolor=FFFFFF`;
 

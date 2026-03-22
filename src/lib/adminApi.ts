@@ -69,3 +69,7 @@ export async function apiAdminAffiliateReferrals(id: string) { return adminFetch
 // Analytics & Audit
 export async function apiAdminAnalytics() { return adminFetch<{ stats: Record<string, number>; topRestaurants: unknown[] }>('/admin/analytics'); }
 export async function apiAdminAuditLogs(page = 1) { return adminFetch<{ logs: unknown[]; total: number }>(`/admin/audit-logs?page=${page}`); }
+
+// ─── PLATFORM SETTINGS ────────────────────────────────────────────────────────
+export async function apiAdminGetSettings() { return adminFetch<{ website_url: string }>('/admin/settings'); }
+export async function apiAdminUpdateSettings(website_url: string) { return adminFetch<Record<string, unknown>>('/admin/settings', { method: 'PATCH', body: JSON.stringify({ website_url }) }); }
