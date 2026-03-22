@@ -26,7 +26,7 @@ export default function AdminAnalyticsPage() {
     useEffect(() => {
         apiAdminAnalytics().then((res) => {
             if (res.data) {
-                setStats(res.data.stats as Stats);
+                setStats(res.data.stats as unknown as Stats);
                 setTopRest(res.data.topRestaurants as { id: string; name: string; scans: number }[]);
             }
             setLoading(false);
