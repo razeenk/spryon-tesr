@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, use } from "react";
-import { uuidv4 } from "@/lib/utils";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
 
@@ -54,7 +53,7 @@ function getSessionId(slug: string): string {
         const stored = raw ? JSON.parse(raw) as { id: string; ts: number } : null;
         if (stored && Date.now() - stored.ts < EXPIRY) return stored.id;
     } catch { /* ignore */ }
-    const id = uuidv4();
+    const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
     try { localStorage.setItem(key, JSON.stringify({ id, ts: Date.now() })); } catch { /* ignore */ }
     return id;
 }

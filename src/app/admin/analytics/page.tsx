@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import AdminLayout from "@/components/AdminLayout";
-import { apiAdminAnalytics, AdminStats } from "@/lib/adminApi";
+import { apiAdminAnalytics } from "@/lib/adminApi";
 import { Store, Activity, Clock, Ban, ScanLine, TrendingUp, DollarSign, Users2 } from "lucide-react";
 
-
+interface Stats { totalRestaurants: number; activeRestaurants: number; pendingRestaurants: number; bannedRestaurants: number; totalScans: number; scansToday: number; scansMonth: number; subscriptionRevenue: number; affiliateRevenue: number; }
 
 function StatCard({ label, value, sub, icon, color, bg }: { label: string; value: string | number; sub?: string; icon: React.ReactNode; color: string; bg: string }) {
     return (
@@ -19,15 +19,15 @@ function StatCard({ label, value, sub, icon, color, bg }: { label: string; value
 }
 
 export default function AdminAnalyticsPage() {
-    const [stats, setStats] = useState<AdminStats | null>(null);
+    const [stats, setStats] = useState<Stats | null>(null);
     const [topRest, setTopRest] = useState<{ id: string; name: string; scans: number }[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         apiAdminAnalytics().then((res) => {
             if (res.data) {
-                setStats(res.data.stats);
-                setTopRest(res.data.topRestaurants);
+                setStats(res.data.stats as Stats);
+                setTopRest(res.data.topRestaurants as { id: string; name: string; scans: number }[]);
             }
             setLoading(false);
         });

@@ -66,18 +66,6 @@ export async function apiAdminCreateAffiliate(data: Record<string, unknown>) { r
 export async function apiAdminUpdateAffiliate(id: string, data: Record<string, unknown>) { return adminFetch<Record<string, unknown>>(`/admin/affiliates/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
 export async function apiAdminAffiliateReferrals(id: string) { return adminFetch<{ referrals: unknown[] }>(`/admin/affiliates/${id}/referrals`); }
 
-export interface AdminStats {
-    totalRestaurants: number;
-    activeRestaurants: number;
-    pendingRestaurants: number;
-    bannedRestaurants: number;
-    totalScans: number;
-    scansToday: number;
-    scansMonth: number;
-    subscriptionRevenue: number;
-    affiliateRevenue: number;
-}
-
 // Analytics & Audit
-export async function apiAdminAnalytics() { return adminFetch<{ stats: AdminStats; topRestaurants: { id: string; name: string; scans: number }[] }>('/admin/analytics'); }
+export async function apiAdminAnalytics() { return adminFetch<{ stats: Record<string, number>; topRestaurants: unknown[] }>('/admin/analytics'); }
 export async function apiAdminAuditLogs(page = 1) { return adminFetch<{ logs: unknown[]; total: number }>(`/admin/audit-logs?page=${page}`); }

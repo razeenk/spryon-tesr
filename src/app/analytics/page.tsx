@@ -71,7 +71,7 @@ export default function AnalyticsPage() {
             if (!token) { setLoading(false); return; }
             try {
                 const res = await fetch(`${API}/api/analytics?tzOffset=${tzOffset}`, { headers: authHeaders() });
-                const json = await res.json<AnalyticsData & { ok: boolean }>();
+                const json = await res.json() as AnalyticsData & { ok: boolean };
                 if (json.ok) setData(json);
             } finally { setLoading(false); }
         })();
