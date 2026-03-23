@@ -3,11 +3,13 @@
 import { useState, useEffect, Suspense } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useSearchParams } from "next/navigation";
-import { apiMe, apiUpdateRestaurantConfig, apiFetch } from "@/lib/api";
+import { apiMe, apiUpdateRestaurantConfig, apiFetch, apiUploadImage } from "@/lib/api";
 import {
     Link2, BarChart3, Eye, UtensilsCrossed, Share2, ExternalLink,
     MapPin, BarChart2, Copy, Check, QrCode, Globe, FileText, ExternalLink as OpenIcon
 } from "lucide-react";
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
 
 interface AnalyticsData {
     counts: Record<string, number>;
@@ -72,6 +74,7 @@ function BioMenuContent() {
     const [restaurantName, setRestaurantName] = useState("");
     const [pageTitle, setPageTitle] = useState("");
     const [pageDesc, setPageDesc] = useState("");
+    const [ogImageUrl, setOgImageUrl] = useState("");
     const [locationUrl, setLocationUrl] = useState("");
     const [linkCopied, setLinkCopied] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -92,6 +95,7 @@ function BioMenuContent() {
                 if (r.slug) setRestaurantSlug(r.slug as string);
                 if (r.page_title) setPageTitle(r.page_title as string);
                 if (r.page_description) setPageDesc(r.page_description as string);
+                if (r.og_image_url) setOgImageUrl(r.og_image_url as string);
                 if (r.location_url) setLocationUrl(r.location_url as string);
                 if (res.data.platformUrl) setPlatformUrl(res.data.platformUrl);
             }
@@ -111,11 +115,31 @@ function BioMenuContent() {
     const publicUrl = `${origin}/${restaurantSlug || "your-slug"}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(publicUrl)}&size=200x200&margin=10&color=111827&bgcolor=FFFFFF`;
 
-    const save = async () => {
+    const handleOgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setSaving(true);
+        try {
+            const res = await apiUploadImage(file);
+            if (res.url) {
+                setOgImageUrl(res.url);
+                // Also trigger an immediate save if desired, but they can click Save Changes
+            } else {
+                alert(res.error || "Upload failed");
+            }
+        } catch {
+            alert("Upload error");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveConfig = async () => {
         setSaving(true); setSaveError("");
         const res = await apiUpdateRestaurantConfig({
             page_title: pageTitle,
             page_description: pageDesc,
+            og_image_url: ogImageUrl,
             slug: restaurantSlug || undefined,
             location_url: locationUrl,
         });
@@ -154,7 +178,7 @@ function BioMenuContent() {
                 {activeTab === "config" && (
                     <button
                         className="btn-primary"
-                        onClick={save}
+                        onClick={handleSaveConfig}
                         disabled={saving}
                         style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 130 }}
                     >
@@ -382,6 +406,37 @@ function BioMenuContent() {
                                     style={{ width: "100%", resize: "vertical", lineHeight: 1.5 }}
                                 />
                                 <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>Shown in link previews when guests share your menu URL.</div>
+                            </div>
+
+                            <div>
+                                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>OG Image URL</label>
+                                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                                    {ogImageUrl && (
+                                        <div style={{ width: 64, height: 60, borderRadius: 8, border: "1px solid var(--border)", overflow: "hidden", flexShrink: 0, position: "relative" }}>
+                                            <img src={ogImageUrl.startsWith("http") ? ogImageUrl : `${API}${ogImageUrl}`} alt="OG preview" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                                            <button onClick={() => setOgImageUrl("")} style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.5)", color: "white", border: "none", borderRadius: "50%", width: 16, height: 16, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                                        </div>
+                                    )}
+                                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
+                                        <div style={{ display: "flex", gap: "8px" }}>
+                                            <input
+                                                className="input"
+                                                placeholder="https://example.com/image.jpg"
+                                                value={ogImageUrl}
+                                                onChange={(e) => setOgImageUrl(e.target.value)}
+                                                style={{ width: "100%", flex: 1 }}
+                                            />
+                                            <label style={{
+                                                background: "var(--card)", border: "1px solid var(--primary)", color: "var(--primary)",
+                                                padding: "0 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1
+                                            }}>
+                                                Upload
+                                                <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleOgUpload} disabled={saving} />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>The large image shown on social media previews (e.g., WhatsApp, iMessage).</div>
                             </div>
 
                             {/* Social preview card */}

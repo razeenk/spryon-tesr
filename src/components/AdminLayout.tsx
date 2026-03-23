@@ -24,6 +24,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const [adminName, setAdminName] = useState("");
     const [adminEmail, setAdminEmail] = useState("");
+    const [globalLogo, setGlobalLogo] = useState<string | null>(null);
+    const [globalTitle, setGlobalTitle] = useState<string | null>(null);
     const [checking, setChecking] = useState(true);
 
     useEffect(() => {
@@ -36,6 +38,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 router.replace("/admin/login");
             }
         }).catch(() => router.replace("/admin/login"));
+        
+        // Fetch global logo if present
+        const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
+        fetch(`${API}/api/public/settings`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok && data.settings) {
+                    if (data.settings.global_logo_url) setGlobalLogo(data.settings.global_logo_url);
+                    if (data.settings.global_title) setGlobalTitle(data.settings.global_title);
+                }
+            })
+            .catch(() => {});
     }, [router]);
 
     const logout = () => { adminClearToken(); router.replace("/admin/login"); };
@@ -56,11 +70,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 {/* Logo */}
                 <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #1E293B" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 32, height: 32, background: "linear-gradient(135deg, #34D399, #059669)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <ShieldCheck size={17} color="white" />
-                        </div>
-                        <div>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: "#F1F5F9" }}>Spryon</div>
+                        {globalLogo ? (
+                            <img src={globalLogo.startsWith("http") ? globalLogo : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787"}${globalLogo}`} alt="Spryon Admin" style={{ width: 32, height: 32, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} />
+                        ) : (
+                            <div style={{ width: 32, height: 32, background: "linear-gradient(135deg, #34D399, #059669)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <ShieldCheck size={17} color="white" />
+                            </div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: "#F1F5F9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{globalTitle || "Spryon"}</div>
                             <div style={{ fontSize: 10.5, color: "#64748B", fontWeight: 600, letterSpacing: "0.05em" }}>SUPER ADMIN</div>
                         </div>
                     </div>

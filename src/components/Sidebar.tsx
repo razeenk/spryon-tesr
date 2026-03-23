@@ -36,6 +36,8 @@ export default function Sidebar({
     const [menuExpanded, setMenuExpanded] = useState(false); // sidebar menu tree
     const [bioMenuExpanded, setBioMenuExpanded] = useState(false); // bio menu tree
     const [isOpenStatus, setIsOpenStatus] = useState(true);
+    const [globalLogo, setGlobalLogo] = useState<string | null>(null);
+    const [globalTitle, setGlobalTitle] = useState<string | null>(null);
     const footerRef = useRef<HTMLDivElement>(null);
 
     // Auto-expand when we're on a /menu route
@@ -53,6 +55,17 @@ export default function Sidebar({
                 if (d.ok && d.restaurant) {
                     setRestaurant(d.restaurant);
                     setIsOpenStatus((d.restaurant.is_open ?? 1) === 1);
+                }
+            })
+            .catch(() => { });
+
+        // Fetch global logo if no restaurant logo
+        fetch(`${API}/api/public/settings`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok && data.settings) {
+                    if (data.settings.global_logo_url) setGlobalLogo(data.settings.global_logo_url);
+                    if (data.settings.global_title) setGlobalTitle(data.settings.global_title);
                 }
             })
             .catch(() => { });
@@ -94,10 +107,14 @@ export default function Sidebar({
         <aside className={`sidebar${isOpen ? " sidebar-open" : ""}`}>
             {/* Logo / Brand */}
             <div className="sidebar-logo">
-                <div className="sidebar-logo-mark">
-                    <Layers size={16} color="white" strokeWidth={2.5} />
-                </div>
-                <span className="sidebar-logo-text">Spryon</span>
+                {globalLogo ? (
+                    <img src={globalLogo.startsWith("http") ? globalLogo : `${API}${globalLogo}`} alt="Spryon" style={{ width: 32, height: 32, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} />
+                ) : (
+                    <div className="sidebar-logo-mark">
+                        <Layers size={16} color="white" strokeWidth={2.5} />
+                    </div>
+                )}
+                <span className="sidebar-logo-text" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{globalTitle || "Spryon"}</span>
                 {onClose && (
                     <button onClick={onClose} className="sidebar-close-btn" aria-label="Close menu">
                         <X size={18} />

@@ -24,7 +24,7 @@ interface Restaurant {
     logo_url: string | null; social_links: SocialLinks | null; theme: Theme | null;
     is_open?: number; location_url?: string | null; currency?: string | null;
 }
-interface MenuData { ok: boolean; restaurant: Restaurant; items: MenuItem[]; categories: Category[]; platformUrl?: string; }
+interface MenuData { ok: boolean; restaurant: Restaurant; items: MenuItem[]; categories: Category[]; platformUrl?: string; is_active_subscription?: boolean; }
 
 const ALLERGENS: Record<string, string> = { gluten: "🌾", dairy: "🥛", nuts: "🥜", eggs: "🥚", soy: "🫘", seafood: "🦐", sesame: "🌿" };
 
@@ -247,6 +247,7 @@ export default function PublicRestaurantPage({ params }: { params: Promise<{ slu
                 if (!res.ok) { setError("Restaurant not found"); return; }
                 const json = await res.json() as MenuData & { error?: string };
                 if (!res.ok || !json.ok) { setError(json.error ?? "Menu not found"); return; }
+                if (json.is_active_subscription === false) { setError("Menu Unavailable"); return; }
                 setData(json);
                 track("menu_visit", slug, {
                     utm_source: new URLSearchParams(window.location.search).get("utm_source") ?? "",

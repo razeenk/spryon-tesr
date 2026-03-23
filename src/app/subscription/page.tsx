@@ -81,6 +81,32 @@ export default function SubscriptionPage() {
     const activePlanName = (data?.restaurant as any)?.plan_short_name || "FREE";
     const activePlanFullName = plans.find(p => p.short_name === activePlanName)?.name || "Free Base Plan";
 
+    const handleCancel = async () => {
+        if (!confirm("Are you sure you want to cancel your active subscription? Your plan will remain active until the end of its billing period.")) return;
+        
+        const token = getToken();
+        if (!token) return;
+
+        setLoading(true);
+        try {
+            const res = await fetch(`${API}/api/subscription/cancel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            });
+            const d = await res.json();
+            if (d.ok) {
+                alert("Subscription cancelled successfully.");
+                window.location.reload();
+            } else {
+                alert(d.error || "Failed to cancel subscription");
+            }
+        } catch (e) {
+            alert("Network error.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <DashboardLayout title="Subscription">
             {/* Header */}
@@ -115,6 +141,18 @@ export default function SubscriptionPage() {
                         Upgrade anytime to unlock more features
                     </div>
                 </div>
+                {activePlanName !== "FREE" && (
+                    <button 
+                        onClick={handleCancel}
+                        style={{
+                            padding: "6px 12px", background: "white", color: "#EF4444", fontSize: "12px",
+                            fontWeight: 600, border: "1px solid #FCA5A5", borderRadius: "8px",
+                            cursor: "pointer", transition: "all 0.2s"
+                        }}
+                    >
+                        Cancel Plan
+                    </button>
+                )}
                 <span style={{
                     fontSize: "11px", fontWeight: 700, background: "#16A34A", color: "white",
                     padding: "3px 10px", borderRadius: "99px", letterSpacing: "0.05em", textTransform: "uppercase"

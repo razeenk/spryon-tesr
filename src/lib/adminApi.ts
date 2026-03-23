@@ -71,5 +71,17 @@ export async function apiAdminAnalytics() { return adminFetch<{ stats: Record<st
 export async function apiAdminAuditLogs(page = 1) { return adminFetch<{ logs: unknown[]; total: number }>(`/admin/audit-logs?page=${page}`); }
 
 // ─── PLATFORM SETTINGS ────────────────────────────────────────────────────────
-export async function apiAdminGetSettings() { return adminFetch<{ website_url: string }>('/admin/settings'); }
-export async function apiAdminUpdateSettings(website_url: string) { return adminFetch<Record<string, unknown>>('/admin/settings', { method: 'PATCH', body: JSON.stringify({ website_url }) }); }
+export async function apiAdminGetSettings() { return adminFetch<{ website_url: string; global_title?: string; global_description?: string; global_logo_url?: string; global_favicon_url?: string; global_og_image_url?: string; }>('/admin/settings'); }
+export async function apiAdminUpdateSettings(data: { website_url: string; global_title?: string; global_description?: string; global_logo_url?: string; global_favicon_url?: string; global_og_image_url?: string; }) { return adminFetch<Record<string, unknown>>('/admin/settings', { method: 'PATCH', body: JSON.stringify(data) }); }
+
+export async function apiAdminUploadImage(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = getAdminToken();
+    const res = await fetch(`${API}/admin/upload`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData,
+    });
+    return res.json() as Promise<{ ok?: boolean; url?: string; error?: string }>;
+}

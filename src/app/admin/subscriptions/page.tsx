@@ -14,7 +14,7 @@ export default function AdminSubscriptionsPage() {
     const [tab, setTab] = useState<"plans" | "subscriptions">("plans");
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
-    const [form, setForm] = useState({ name: "", short_name: "", status: "enabled", base_plan_id: "", price_monthly: "", scan_limit: "10000", table_limit: "20", features: "" });
+    const [form, setForm] = useState({ name: "", short_name: "", status: "enabled", base_plan_id: "", price_monthly: "", scan_limit: "10000", table_limit: "20", features: "", duration_type: "months", duration_value: "1" });
     const [editId, setEditId] = useState<string | null>(null);
     const [saved, setSaved] = useState(false);
 
@@ -37,6 +37,8 @@ export default function AdminSubscriptionsPage() {
             scan_limit: parseInt(form.scan_limit) || -1,
             table_limit: parseInt(form.table_limit) || -1,
             features: form.features.split(",").map((f) => f.trim()).filter(Boolean),
+            duration_type: form.duration_type,
+            duration_value: parseInt(form.duration_value) || 1,
         };
         if (editId) {
             await apiAdminUpdatePlan(editId, data);
@@ -44,13 +46,13 @@ export default function AdminSubscriptionsPage() {
             await apiAdminCreatePlan(data);
         }
         setCreating(false); setEditId(null);
-        setForm({ name: "", short_name: "", status: "enabled", base_plan_id: "", price_monthly: "", scan_limit: "10000", table_limit: "20", features: "" });
+        setForm({ name: "", short_name: "", status: "enabled", base_plan_id: "", price_monthly: "", scan_limit: "10000", table_limit: "20", features: "", duration_type: "months", duration_value: "1" });
         setSaved(true); setTimeout(() => setSaved(false), 2000);
         load();
     };
 
     const startEdit = (p: Obj) => {
-        setForm({ name: p.name, short_name: p.short_name || "", status: p.status || "enabled", base_plan_id: p.base_plan_id || "", price_monthly: String(p.price_monthly), scan_limit: String(p.scan_limit), table_limit: String(p.table_limit), features: (JSON.parse(p.features || "[]") as string[]).join(", ") });
+        setForm({ name: p.name, short_name: p.short_name || "", status: p.status || "enabled", base_plan_id: p.base_plan_id || "", price_monthly: String(p.price_monthly), scan_limit: String(p.scan_limit), table_limit: String(p.table_limit), features: (JSON.parse(p.features || "[]") as string[]).join(", "), duration_type: p.duration_type || "months", duration_value: String(p.duration_value || 1) });
         setEditId(p.id); setCreating(true);
     };
 
@@ -103,6 +105,16 @@ export default function AdminSubscriptionsPage() {
                                 </select>
                             </div>
                             <div><label style={{ fontSize: 11.5, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 5 }}>Price / Month ($)</label><input {...inp("price_monthly")} type="number" placeholder="29.99" /></div>
+                            <div>
+                                <label style={{ fontSize: 11.5, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 5 }}>Duration Unit</label>
+                                <select {...inp("duration_type")}>
+                                    <option value="minutes">Minutes</option>
+                                    <option value="days">Days</option>
+                                    <option value="months">Months</option>
+                                    <option value="years">Years</option>
+                                </select>
+                            </div>
+                            <div><label style={{ fontSize: 11.5, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 5 }}>Duration Value</label><input {...inp("duration_value")} type="number" min="1" /></div>
                             <div><label style={{ fontSize: 11.5, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 5 }}>Scan Limit (-1 for Unlimited)</label><input {...inp("scan_limit")} type="number" /></div>
                             <div><label style={{ fontSize: 11.5, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 5 }}>Table Limit (-1 for Unlimited)</label><input {...inp("table_limit")} type="number" /></div>
                             <div style={{ gridColumn: "1/-1" }}><label style={{ fontSize: 11.5, color: "#64748B", fontWeight: 600, display: "block", marginBottom: 5 }}>Features (comma-separated)</label><input {...inp("features")} placeholder="QR codes, Analytics, Priority support" /></div>

@@ -64,6 +64,8 @@ interface MenuData {
     table: { id: string; label: string; seats: number };
     items: MenuItem[];
     categories: Category[];
+    platformUrl?: string;
+    is_active_subscription?: boolean;
 }
 
 const fmtPrice = (p: number) => `$${p.toFixed(2)}`;
@@ -214,6 +216,7 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
                 const res = await fetch(`${API}/public/menu/${qrToken}`); // Removed apiKeyHeader()
                 const json = await res.json() as MenuData & { ok: boolean; error?: string };
                 if (!res.ok || !json.ok) { setError(json.error ?? "Menu not found"); return; }
+                if (json.is_active_subscription === false) { setError("Menu Unavailable"); return; }
                 setData(json);
 
                 // Scan key with 2-hour inactivity expiry.

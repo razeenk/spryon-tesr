@@ -183,7 +183,7 @@ export async function apiUpdateRestaurantLogo(logo_url: string) {
 
 export async function apiUpdateRestaurantConfig(config: {
     social_links?: object; theme?: object; name?: string; page_title?: string;
-    page_description?: string; slug?: string; location_url?: string;
+    page_description?: string; og_image_url?: string; slug?: string; location_url?: string;
     is_open?: number; currency?: string; timezone?: string;
     phone?: string; email?: string; address?: string; opening_hours?: object;
 }) {
