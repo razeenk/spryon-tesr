@@ -164,6 +164,10 @@ export default function AdminRestaurantDetailPage() {
                     {/* Subscription */}
                     <Card title="Subscription">
                         <InfoRow label="Current Plan" value={r.plan_name ?? "None"} />
+                        <InfoRow label="Status" value={r.sub_status ? r.sub_status.charAt(0).toUpperCase() + r.sub_status.slice(1) : "None"} />
+                        {r.sub_started_at && <InfoRow label="Started At" value={new Date(r.sub_started_at * 1000).toLocaleDateString()} />}
+                        {r.sub_expires_at && <InfoRow label="Expires At" value={new Date(r.sub_expires_at * 1000).toLocaleDateString()} />}
+                        {r.rzp_sub_id && <InfoRow label="Razorpay Sub ID" value={r.rzp_sub_id} />}
                         {r.rejection_reason && <InfoRow label="Restriction Reason" value={r.rejection_reason} />}
                     </Card>
                 </div>

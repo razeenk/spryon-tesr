@@ -6,6 +6,7 @@ import Stats from "@/components/Stats";
 import RecentScans from "@/components/RecentScans";
 import TablesOverview from "@/components/TablesOverview";
 import { useDashboard } from "@/lib/useDashboard";
+import Link from "next/link";
 
 // ─── Status full-screen configs ──────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -155,6 +156,80 @@ function StatusWall({ status, reason }: { status: keyof typeof STATUS_CONFIG; re
   );
 }
 
+// ─── Subscription Block Wall ─────────────────────────────────────────────────
+function SubscriptionWall() {
+  return (
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "24px", zIndex: 9999, fontFamily: "Inter, system-ui, sans-serif",
+    }}>
+      <div style={{ width: "100%", maxWidth: 520, textAlign: "center" }}>
+        <div style={{
+          width: 80, height: 80, borderRadius: 24, background: "white",
+          border: "2px solid #FECACA", display: "flex",
+          alignItems: "center", justifyContent: "center",
+          margin: "0 auto 20px", fontSize: 38,
+          boxShadow: "0 8px 32px #EF444420",
+        }}>💳</div>
+
+        <div style={{
+          display: "inline-block", background: "#FEE2E2", border: "1px solid #FCA5A5",
+          borderRadius: 20, padding: "4px 14px", marginBottom: 16,
+          fontSize: 11, fontWeight: 800, color: "#EF4444", letterSpacing: "0.1em",
+        }}>SUBSCRIPTION EXPIRED</div>
+
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#7F1D1D", letterSpacing: "-0.5px", marginBottom: 6 }}>
+          Dashboard Unavailable
+        </div>
+        <div style={{ fontSize: 14.5, color: "#991B1B", opacity: 0.8, marginBottom: 24 }}>
+          Your subscription has ended
+        </div>
+
+        <div style={{
+          background: "white", border: "1px solid #FCA5A5",
+          borderRadius: 16, padding: "24px 28px", textAlign: "left",
+          boxShadow: "0 4px 20px #EF444410", marginBottom: 20,
+        }}>
+          <p style={{ fontSize: 14, color: "#991B1B", lineHeight: 1.65, margin: "0 0 18px" }}>
+            Your subscription has expired and no free plan is available.
+            Please subscribe to continue using the Spryon dashboard and QR menu features.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              "All your menu data and tables are safely preserved.",
+              "Guests scanning your QR codes will see an unavailable message.",
+              "Resubscribe anytime to restore full access immediately.",
+            ].map((tip, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: "50%", background: "#EF444418",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <span style={{ fontSize: 13, color: "#991B1B", opacity: 0.85, lineHeight: 1.5 }}>{tip}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Link href="/subscription" style={{
+          display: "inline-block", background: "linear-gradient(135deg, #10B981, #059669)",
+          color: "white", fontWeight: 700, fontSize: 15, padding: "13px 32px",
+          borderRadius: 12, textDecoration: "none",
+          boxShadow: "0 4px 16px #10B98140",
+        }}>
+          Subscribe Now →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard Page ──────────────────────────────────────────────────────────
 export default function Home() {
   const { data } = useDashboard();
@@ -167,14 +242,55 @@ export default function Home() {
   const status = data?.restaurant?.status ?? "active";
   const restaurantName = data?.restaurant?.name ?? "Your Restaurant";
   const rejectionReason = data?.restaurant?.rejection_reason;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const subStatus = (data?.restaurant as any)?.sub_status ?? null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const subExpiresAt = (data?.restaurant as any)?.sub_expires_at ?? null;
+  const nowTs = Math.floor(Date.now() / 1000);
 
-  // Block entire dashboard for non-active restaurants
-  if (data && status !== "active") {
+  // Block for non-active restaurant accounts
+  if (data && status !== 'active') {
     return <StatusWall status={status as keyof typeof STATUS_CONFIG} reason={rejectionReason} />;
   }
 
+  // Block dashboard if subscription expired AND no free plan (sub_status = 'expired')
+  if (data && subStatus === 'expired') {
+    return <SubscriptionWall />;
+  }
+
+  // Grace period: cancelled but expires_at still in future — show banner but allow access
+  const inGracePeriod = subStatus === 'cancelled' && subExpiresAt && subExpiresAt > nowTs;
+  const graceDaysLeft = inGracePeriod
+    ? Math.max(0, Math.ceil((subExpiresAt - nowTs) / 86400))
+    : 0;
+
   return (
     <DashboardLayout title="Dashboard">
+      {/* Grace period warning banner */}
+      {inGracePeriod && (
+        <div style={{
+          background: "linear-gradient(135deg, #FFFBEB, #FEF3C7)",
+          border: "1px solid #FDE68A", borderRadius: 12, padding: "12px 18px",
+          marginBottom: 20, display: "flex", alignItems: "center", gap: 12,
+        }}>
+          <span style={{ fontSize: 20 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "#78350F" }}>
+              Subscription Cancelled — Access ends in {graceDaysLeft} day{graceDaysLeft !== 1 ? 's' : ''}
+            </div>
+            <div style={{ fontSize: 12.5, color: "#92400E", marginTop: 2 }}>
+              Your plan is active until {new Date(subExpiresAt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.
+              After that, the dashboard and public menu will be unavailable.
+            </div>
+          </div>
+          <a href="/subscription" style={{
+            fontSize: 12.5, fontWeight: 700, color: "#D97706",
+            textDecoration: "none", border: "1px solid #FCD34D",
+            padding: "5px 12px", borderRadius: 8, background: "white", whiteSpace: "nowrap",
+          }}>Resubscribe</a>
+        </div>
+      )}
+
       <div className="page-header">
         <div>
           <div className="page-title">Overview</div>

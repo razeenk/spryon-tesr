@@ -65,7 +65,7 @@ interface MenuData {
     items: MenuItem[];
     categories: Category[];
     platformUrl?: string;
-    is_active_subscription?: boolean;
+    subscription_expired?: boolean;
 }
 
 const fmtPrice = (p: number) => `$${p.toFixed(2)}`;
@@ -216,7 +216,7 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
                 const res = await fetch(`${API}/public/menu/${qrToken}`); // Removed apiKeyHeader()
                 const json = await res.json() as MenuData & { ok: boolean; error?: string };
                 if (!res.ok || !json.ok) { setError(json.error ?? "Menu not found"); return; }
-                if (json.is_active_subscription === false) { setError("Menu Unavailable"); return; }
+                if (json.subscription_expired === true) { setError("MENU_UNAVAILABLE_SUB"); return; }
                 setData(json);
 
                 // Scan key with 2-hour inactivity expiry.
@@ -348,14 +348,31 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
                                                 if (uncat.length) grouped.push({cat: null, catId: "other", items: uncat });
     }
 
-                                                if (error) return (
-                                                <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAFAFA", fontFamily: "'Inter', system-ui, sans-serif" }}>
-                                                    <div style={{ textAlign: "center", padding: "48px 24px" }}>
-                                                        <p style={{ fontSize: "11px", color: "#999", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: "8px" }}>Menu unavailable</p>
-                                                        <p style={{ fontSize: "15px", color: "#666" }}>{error}</p>
-                                                    </div>
-                                                </div>
-                                                );
+    if (error === "MENU_UNAVAILABLE_SUB") {
+        return (
+            <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyItems: "center", background: "#FEF2F2", fontFamily: "'Inter', system-ui, sans-serif" }}>
+                <div style={{ textAlign: "center", padding: "48px 24px", width: "100%", maxWidth: "480px", margin: "0 auto" }}>
+                    <div style={{ width: "64px", height: "64px", background: "white", borderRadius: "20px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", boxShadow: "0 8px 24px rgba(239,68,68,0.12)" }}>
+                        <span style={{ fontSize: "28px" }}>🍽️</span>
+                    </div>
+                    <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#7F1D1D", marginBottom: "8px", letterSpacing: "-0.5px" }}>Menu Unavailable</h2>
+                    <p style={{ fontSize: "15px", color: "#991B1B", opacity: 0.85, lineHeight: 1.5, margin: "0 0 32px" }}>
+                        This restaurant&apos;s digital menu is temporarily unavailable. Please check back later or ask your server for a physical menu.
+                    </p>
+                    <div style={{ fontSize: "12px", color: "#FCA5A5", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Powered by Spryon</div>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAFAFA", fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <div style={{ textAlign: "center", padding: "48px 24px" }}>
+            <p style={{ fontSize: "11px", color: "#999", letterSpacing: "0.07em", textTransform: "uppercase", marginBottom: "8px" }}>Menu unavailable</p>
+            <p style={{ fontSize: "15px", color: "#666" }}>{error}</p>
+        </div>
+    </div>
+    );
 
                                                 return (
                                                 <div style={{ minHeight: "100vh", background: bg, fontFamily: "'Inter', system-ui, -apple-system, sans-serif", WebkitFontSmoothing: "antialiased", paddingBottom: "80px" }}>

@@ -24,7 +24,7 @@ interface Restaurant {
     logo_url: string | null; social_links: SocialLinks | null; theme: Theme | null;
     is_open?: number; location_url?: string | null; currency?: string | null;
 }
-interface MenuData { ok: boolean; restaurant: Restaurant; items: MenuItem[]; categories: Category[]; platformUrl?: string; is_active_subscription?: boolean; }
+interface MenuData { ok: boolean; restaurant: Restaurant; items: MenuItem[]; categories: Category[]; platformUrl?: string; subscription_expired?: boolean; }
 
 const ALLERGENS: Record<string, string> = { gluten: "🌾", dairy: "🥛", nuts: "🥜", eggs: "🥚", soy: "🫘", seafood: "🦐", sesame: "🌿" };
 
@@ -247,7 +247,7 @@ export default function PublicRestaurantPage({ params }: { params: Promise<{ slu
                 if (!res.ok) { setError("Restaurant not found"); return; }
                 const json = await res.json() as MenuData & { error?: string };
                 if (!res.ok || !json.ok) { setError(json.error ?? "Menu not found"); return; }
-                if (json.is_active_subscription === false) { setError("Menu Unavailable"); return; }
+                if (json.subscription_expired === true) { setError("MENU_UNAVAILABLE_SUB"); return; }
                 setData(json);
                 track("menu_visit", slug, {
                     utm_source: new URLSearchParams(window.location.search).get("utm_source") ?? "",
@@ -367,6 +367,23 @@ export default function PublicRestaurantPage({ params }: { params: Promise<{ slu
         });
         const uncat = allItems.filter((i) => !i.category_id);
         if (uncat.length) grouped.push({ cat: null, catId: "other", items: uncat });
+    }
+
+    if (error === "MENU_UNAVAILABLE_SUB") {
+        return (
+            <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyItems: "center", background: "#FEF2F2", fontFamily: "'Inter', system-ui, sans-serif" }}>
+                <div style={{ textAlign: "center", padding: "48px 24px", width: "100%", maxWidth: "480px", margin: "0 auto" }}>
+                    <div style={{ width: "64px", height: "64px", background: "white", borderRadius: "20px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", boxShadow: "0 8px 24px rgba(239,68,68,0.12)" }}>
+                        <span style={{ fontSize: "28px" }}>🍽️</span>
+                    </div>
+                    <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#7F1D1D", marginBottom: "8px", letterSpacing: "-0.5px" }}>Menu Unavailable</h2>
+                    <p style={{ fontSize: "15px", color: "#991B1B", opacity: 0.85, lineHeight: 1.5, margin: "0 0 32px" }}>
+                        This restaurant&apos;s digital menu is temporarily unavailable. Please check back later or ask your server for a physical menu.
+                    </p>
+                    <div style={{ fontSize: "12px", color: "#FCA5A5", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Powered by Spryon</div>
+                </div>
+            </div>
+        );
     }
 
     if (error) return (
