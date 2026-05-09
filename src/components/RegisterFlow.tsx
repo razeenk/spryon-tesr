@@ -45,7 +45,10 @@ interface FormData {
     email: string;
     phone: string;
     restaurantName: string;
-    city: string;
+    city: string;           // display text
+    locationId: string;     // resolved from picker
+    state: string;          // for custom submission
+    country: string;
     password: string;
     confirmPassword: string;
 }
@@ -167,6 +170,156 @@ const primaryBtn = (enabled: boolean): React.CSSProperties => ({
     gap: "8px", opacity: enabled ? 1 : 0.7, transition: "background 0.15s",
 });
 
+// ─── Location Picker ─────────────────────────────────────────────────────────
+interface LocOption { id: string; city: string; state: string | null; country: string; status: string; service_available: number; }
+
+function LocationPicker({
+    value, locationId, state, country, error,
+    onChange,
+}: {
+    value: string; locationId: string; state: string; country: string; error?: string;
+    onChange: (info: { city: string; locationId: string; state: string; country: string }) => void;
+}) {
+    const [options, setOptions] = useState<LocOption[]>([]);
+    const [loadingLoc, setLoadingLoc] = useState(true);
+    const [mode, setMode] = useState<"select" | "custom">("select");
+    const [search, setSearch] = useState("");
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        fetch(`${API}/api/public/locations`)
+            .then(r => r.json() as Promise<{ ok?: boolean; locations?: LocOption[] }>)
+            .then(d => { setOptions(d.locations ?? []); setLoadingLoc(false); })
+            .catch(() => setLoadingLoc(false));
+    }, []);
+
+    const filtered = options.filter(o =>
+        o.city.toLowerCase().includes(search.toLowerCase()) ||
+        (o.state ?? "").toLowerCase().includes(search.toLowerCase())
+    );
+
+    const selectOption = (o: LocOption) => {
+        onChange({ city: o.city, locationId: o.id, state: o.state ?? "", country: o.country });
+        setSearch(""); setOpen(false);
+    };
+
+
+
+    if (mode === "custom") {
+        return (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Your location</label>
+                    <button type="button" onClick={() => { setMode("select"); onChange({ city: "", locationId: "", state: "", country: "India" }); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "12px", color: "#34D399", fontFamily: "inherit", padding: 0 }}>← Choose from list</button>
+                </div>
+                <input
+                    placeholder="City *" value={value}
+                    onChange={(e) => onChange({ city: e.target.value, locationId: "", state, country })}
+                    style={{ border: `1px solid ${error ? "#FCA5A5" : "#E4E7EC"}`, borderRadius: "9px", padding: "10px 13px", fontSize: "14px", color: "#0F172A", background: "white", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }}
+                    onFocus={(e) => { e.target.style.borderColor = "#34D399"; e.target.style.boxShadow = "0 0 0 3px rgba(52,211,153,0.15)"; }}
+                    onBlur={(e) => { e.target.style.borderColor = error ? "#FCA5A5" : "#E4E7EC"; e.target.style.boxShadow = "none"; }}
+                />
+                <input
+                    placeholder="State (optional)" value={state}
+                    onChange={(e) => onChange({ city: value, locationId, state: e.target.value, country })}
+                    style={{ border: "1px solid #E4E7EC", borderRadius: "9px", padding: "10px 13px", fontSize: "14px", color: "#0F172A", background: "white", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }}
+                    onFocus={(e) => { e.target.style.borderColor = "#34D399"; e.target.style.boxShadow = "0 0 0 3px rgba(52,211,153,0.15)"; }}
+                    onBlur={(e) => { e.target.style.borderColor = "#E4E7EC"; e.target.style.boxShadow = "none"; }}
+                />
+                <select value={country} onChange={(e) => onChange({ city: value, locationId, state, country: e.target.value })}
+                    style={{ border: "1px solid #E4E7EC", borderRadius: "9px", padding: "10px 13px", fontSize: "14px", color: "#0F172A", background: "white", outline: "none", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }}>
+                    {["India","Bangladesh","Pakistan","Sri Lanka","Nepal","Indonesia","Malaysia","Singapore","UAE","Saudi Arabia","USA","UK","Australia","Canada","Other"].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                    ))}
+                </select>
+                <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "9px 11px", fontSize: 12, color: "#92400E" }}>
+                    📍 Your city will be submitted for review. You can still use Spryon while it&apos;s pending.
+                </div>
+                {error && <span style={{ fontSize: "12px", color: "#EF4444", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                    {error}
+                </span>}
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 6 }}>
+            <label style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>City / Location</label>
+            {/* Trigger */}
+            <button
+                type="button"
+                onClick={() => setOpen(v => !v)}
+                style={{ border: `1px solid ${error ? "#FCA5A5" : open ? "#34D399" : "#E4E7EC"}`, boxShadow: open ? "0 0 0 3px rgba(52,211,153,0.15)" : "none", borderRadius: "9px", padding: "10px 13px", fontSize: "14px", color: value ? "#0F172A" : "#9CA3AF", background: "white", outline: "none", fontFamily: "inherit", width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", transition: "border-color 0.15s, box-shadow 0.15s" }}
+            >
+                <span>{value ? `${value}${options.find(o => o.id === locationId)?.state ? `, ${options.find(o => o.id === locationId)?.state}` : ""}` : "Select your city…"}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform 0.2s", color: "#9CA3AF" }}><polyline points="6 9 12 15 18 9" /></svg>
+            </button>
+
+            {/* Dropdown */}
+            {open && (
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 100, background: "white", border: "1px solid #E4E7EC", borderRadius: 12, boxShadow: "0 8px 30px rgba(0,0,0,0.12)", overflow: "hidden", maxHeight: 300 }}>
+                    <div style={{ padding: "8px 10px", borderBottom: "1px solid #F1F5F9" }}>
+                        <input
+                            autoFocus
+                            value={search} onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search cities…"
+                            style={{ width: "100%", border: "1px solid #E4E7EC", borderRadius: 7, padding: "7px 10px", fontSize: 13, color: "#0F172A", background: "#F9FAFB", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                        />
+                    </div>
+                    <div style={{ overflowY: "auto", maxHeight: 220 }}>
+                        {loadingLoc ? (
+                            <div style={{ padding: "16px", textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Loading…</div>
+                        ) : filtered.length === 0 ? (
+                            <div style={{ padding: "12px 14px", fontSize: 13, color: "#9CA3AF" }}>No results</div>
+                        ) : filtered.map(o => (
+                            <button key={o.id} type="button" onClick={() => selectOption(o)}
+                                style={{ display: "flex", alignItems: "center", width: "100%", padding: "9px 14px", background: locationId === o.id ? "#ECFDF5" : "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", gap: 8 }}>
+
+                                <span style={{ flex: 1 }}>
+                                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "#0F172A" }}>{o.city}</span>
+                                    {o.state && <span style={{ fontSize: 12, color: "#6B7280" }}>, {o.state}</span>}
+                                </span>
+                                {o.status === "coming_soon" && <span style={{ fontSize: 10.5, color: "#60A5FA", background: "rgba(96,165,250,0.1)", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Soon</span>}
+                                {locationId === o.id && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                            </button>
+                        ))}
+                    </div>
+                    <button type="button" onClick={() => { setOpen(false); setMode("custom"); }}
+                        style={{ display: "flex", width: "100%", padding: "9px 14px", borderTop: "1px solid #F1F5F9", background: "#F9FAFB", border: "none", cursor: "pointer", fontFamily: "inherit", alignItems: "center", gap: 6, fontSize: 12.5, color: "#6B7280", fontWeight: 600 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                        My city isn&apos;t listed
+                    </button>
+                </div>
+            )}
+
+            {error && <span style={{ fontSize: "12px", color: "#EF4444", display: "flex", alignItems: "center", gap: "4px" }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                {error}
+            </span>}
+            {/* ℹ️ Service / coming-soon notice */}
+            {locationId && (() => {
+                const sel = options.find(o => o.id === locationId);
+                if (!sel) return null;
+                if (sel.status === "coming_soon") return (
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 7, background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 10px", fontSize: 12, color: "#92400E" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+                        ⏳ Physical service is <strong>coming soon</strong> to your area! You can still sign up and use Spryon online.
+                    </div>
+                );
+                if (!sel.service_available) return (
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 7, background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "8px 10px", fontSize: 12, color: "#1E40AF" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+                        ℹ️ Physical services are not yet available in your area. You can still use Spryon fully online.
+                    </div>
+                );
+                return null;
+            })()}
+        </div>
+    );
+}
+
+
 function validate(step: Step, data: FormData): Errors {
     const e: Errors = {};
     if (step === 0) {
@@ -177,7 +330,7 @@ function validate(step: Step, data: FormData): Errors {
     }
     if (step === 1) {
         if (!data.restaurantName.trim()) e.restaurantName = "Restaurant name is required";
-        if (!data.city.trim()) e.city = "City is required";
+        if (!data.city.trim()) e.city = "Please select or enter your city";
     }
     if (step === 2) {
         if (!data.password) e.password = "Password is required";
@@ -380,8 +533,20 @@ export default function RegisterFlow() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [refCode, setRefCode] = useState<string | null>(null);
+
+    // ─── Per-field sanitizers ─────────────────────────────────────────────────
+    const SANITIZERS: Partial<Record<keyof FormData, (v: string) => string>> = {
+        name:            (v) => v.replace(/<[^>]*>/g, "").replace(/[<>"]/g, ""),
+        email:           (v) => v.replace(/<[^>]*>/g, "").replace(/javascript\s*:/gi, "").toLowerCase().trim(),
+        phone:           (v) => v.replace(/[^0-9\s+\-().]/g, ""),
+        restaurantName:  (v) => v.replace(/<[^>]*>/g, "").replace(/[<>"]/g, ""),
+        city:            (v) => v.replace(/<[^>]*>/g, "").replace(/[<>"]/g, ""),
+        // passwords: strip tags only — preserve all special chars for password strength
+        password:        (v) => v.replace(/<script[^>]*>.*?<\/script>/gi, "").replace(/<[^>]*>/g, ""),
+        confirmPassword: (v) => v.replace(/<script[^>]*>.*?<\/script>/gi, "").replace(/<[^>]*>/g, ""),
+    };
     const [step, setStep] = useState<Step>(0);
-    const [data, setData] = useState<FormData>({ name: "", email: "", phone: "", restaurantName: "", city: "", password: "", confirmPassword: "" });
+    const [data, setData] = useState<FormData>({ name: "", email: "", phone: "", restaurantName: "", city: "", locationId: "", state: "", country: "India", password: "", confirmPassword: "" });
     const [errors, setErrors] = useState<Errors>({});
     const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
     const [loading, setLoading] = useState(false);
@@ -389,6 +554,20 @@ export default function RegisterFlow() {
     const [resent, setResent] = useState(false);
     const [direction, setDirection] = useState<"forward" | "back">("forward");
     const [animating, setAnimating] = useState(false);
+    const [globalLogo, setGlobalLogo] = useState<string | null>(null);
+    const [globalTitle, setGlobalTitle] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetch(`${API}/api/public/settings`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok && data.settings) {
+                    if (data.settings.global_logo_url) setGlobalLogo(data.settings.global_logo_url);
+                    if (data.settings.global_title) setGlobalTitle(data.settings.global_title);
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         const ref = searchParams.get("ref");
@@ -396,7 +575,8 @@ export default function RegisterFlow() {
     }, [searchParams]);
 
     const set = (key: keyof FormData) => (val: string) => {
-        setData((p) => ({ ...p, [key]: val }));
+        const sanitized = SANITIZERS[key] ? SANITIZERS[key]!(val) : val;
+        setData((p) => ({ ...p, [key]: sanitized }));
         if (errors[key as keyof Errors]) setErrors((p) => ({ ...p, [key]: undefined, api: undefined }));
     };
 
@@ -423,6 +603,14 @@ export default function RegisterFlow() {
 
             if (result.error) { setErrors({ api: result.error }); return; }
             if (result.data?.token) setToken(result.data.token);
+
+            // Submit location in background (non-blocking — user proceeds regardless)
+            if (data.city.trim()) {
+                apiPost("/api/locations/submit", {
+                    ...(data.locationId ? { locationId: data.locationId } : { city: data.city, state: data.state || undefined, country: data.country }),
+                }).catch(() => { /* ignore — not critical */ });
+            }
+
             navigate(3, "forward");
         } else {
             navigate((step + 1) as Step, "forward");
@@ -452,10 +640,14 @@ export default function RegisterFlow() {
         <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", fontFamily: "'Inter', -apple-system, sans-serif" }}>
             {/* Logo */}
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "28px" }}>
-                <div style={{ width: "32px", height: "32px", background: "#34D399", borderRadius: "9px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
-                </div>
-                <span style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.3px" }}>Spryon</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={globalLogo ? (globalLogo.startsWith("http") ? globalLogo : `${API}${globalLogo}`) : "/logo.png"}
+                    alt="Spryon"
+                    width={32} height={32}
+                    style={{ borderRadius: "9px", flexShrink: 0, objectFit: "cover" }}
+                />
+                <span style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.3px" }}>{globalTitle || "Spryon"}</span>
             </div>
 
             {/* Card */}
@@ -467,7 +659,7 @@ export default function RegisterFlow() {
                     {step === 0 && (
                         <>
                             <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#0F172A", marginBottom: "4px", letterSpacing: "-0.4px" }}>Create your account</h2>
-                            <p style={{ fontSize: "13.5px", color: "#6B7280", marginBottom: refCode ? "12px" : "24px" }}>Start your 14-day free trial. No credit card required.</p>
+                            <p style={{ fontSize: "13.5px", color: "#6B7280", marginBottom: refCode ? "12px" : "24px" }}>Fill in your details to create your account.</p>
                             {refCode && (
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 9, padding: "8px 12px", marginBottom: 20 }}>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
@@ -494,7 +686,17 @@ export default function RegisterFlow() {
                             <p style={{ fontSize: "13.5px", color: "#6B7280", marginBottom: "24px" }}>Tell us about your place. You can update this any time.</p>
                             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                                 <Field label="Restaurant name" placeholder="Sakura Ramen" value={data.restaurantName} error={errors.restaurantName} onChange={set("restaurantName")} autoFocus />
-                                <Field label="City / Location" placeholder="San Francisco, CA" value={data.city} error={errors.city} onChange={set("city")} />
+                                <LocationPicker
+                                    value={data.city}
+                                    locationId={data.locationId}
+                                    state={data.state}
+                                    country={data.country}
+                                    error={errors.city}
+                                    onChange={({ city, locationId, state, country }) => {
+                                        setData(p => ({ ...p, city, locationId, state, country }));
+                                        if (errors.city) setErrors(p => ({ ...p, city: undefined }));
+                                    }}
+                                />
                             </div>
                             <div style={{ display: "flex", gap: "10px", marginTop: "24px" }}>
                                 <button onClick={() => navigate(0, "back")} style={{ flex: "0 0 auto", padding: "11px 16px", borderRadius: "9px", border: "1px solid #E4E7EC", background: "white", color: "#374151", fontSize: "14px", fontWeight: 500, cursor: "pointer", fontFamily: "inherit", marginTop: "0", whiteSpace: "nowrap" }}>← Back</button>
@@ -550,7 +752,6 @@ export default function RegisterFlow() {
                                     We sent a 6-digit code to<br />
                                     <strong style={{ color: "#0F172A" }}>{data.email}</strong>
                                 </p>
-                                <p style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "6px" }}>Check the Worker terminal for the code during local dev.</p>
                             </div>
 
                             <OtpInput value={otp} onChange={setOtp} />
@@ -584,8 +785,8 @@ export default function RegisterFlow() {
             </div>
 
             <p style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "24px", textAlign: "center" }}>
-                <a href="#" style={{ color: "#6B7280", textDecoration: "underline" }}>Terms</a>{" · "}
-                <a href="#" style={{ color: "#6B7280", textDecoration: "underline" }}>Privacy</a>
+                <a href="/terms" style={{ color: "#6B7280", textDecoration: "underline" }}>Terms</a>{" · "}
+                <a href="/privacy" style={{ color: "#6B7280", textDecoration: "underline" }}>Privacy</a>
             </p>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } } * { box-sizing: border-box; }`}</style>
         </div>

@@ -1,0 +1,50 @@
+# Cloudflare Pages — Response Headers
+# Processed at the edge before Next.js runtime
+
+# ─── Immutable static assets (hashed filenames by Next.js build) ───────────────
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/_next/image*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# ─── Fonts & favicons (long-lived) ───────────────────────────────────────────
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/favicon.ico
+  Cache-Control: public, max-age=86400
+
+# ─── Public SSR pages — edge cached for 1 hour, SWR for 24 hours ─────────────
+/*
+  Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# ─── NEVER cache authenticated / admin / sensitive routes ────────────────────
+/admin/*
+  Cache-Control: private, no-store, no-cache
+  X-Robots-Tag: noindex
+
+/dashboard/*
+  Cache-Control: private, no-store, no-cache
+  X-Robots-Tag: noindex
+
+/api/*
+  Cache-Control: no-store
+
+/login
+  Cache-Control: private, no-store, no-cache
+
+/register
+  Cache-Control: private, no-store, no-cache
+
+/settings
+  Cache-Control: private, no-store, no-cache
+
+/subscription
+  Cache-Control: private, no-store, no-cache
+
+/analytics
+  Cache-Control: private, no-store, no-cache

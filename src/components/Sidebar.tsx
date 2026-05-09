@@ -7,9 +7,10 @@ import { getToken, clearToken, authHeaders } from "@/lib/api";
 import {
     UtensilsCrossed, FolderOpen, Palette, CheckCircle2, XCircle,
     LayoutDashboard, ClipboardList, Table2, Share2, BarChart2,
-    ChevronDown, ChevronsUpDown, Settings, LogOut, X, Layers,
+    ChevronDown, ChevronsUpDown, Settings, LogOut, X,
     Link2, BarChart3, CreditCard,
 } from "lucide-react";
+import NotificationBell from "./NotificationBell";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8788";
 
@@ -100,7 +101,7 @@ export default function Sidebar({
     };
 
     const restaurantName = restaurant?.name ?? "Your Restaurant";
-    const logoUrl = restaurant?.logo_url ? `${API}${restaurant.logo_url}` : null;
+    const logoUrl = restaurant?.logo_url ? (restaurant.logo_url.startsWith('http') ? restaurant.logo_url : `${API}${restaurant.logo_url}`) : null;
     const initials = getInitials(restaurantName);
 
     return (
@@ -110,9 +111,8 @@ export default function Sidebar({
                 {globalLogo ? (
                     <img src={globalLogo.startsWith("http") ? globalLogo : `${API}${globalLogo}`} alt="Spryon" style={{ width: 32, height: 32, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} />
                 ) : (
-                    <div className="sidebar-logo-mark">
-                        <Layers size={16} color="white" strokeWidth={2.5} />
-                    </div>
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src="/logo.png" alt="Spryon" style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, objectFit: "cover" }} />
                 )}
                 <span className="sidebar-logo-text" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{globalTitle || "Spryon"}</span>
                 {onClose && (
@@ -231,8 +231,11 @@ export default function Sidebar({
                     <div style={{
                         position: "absolute", bottom: "calc(100% + 8px)", left: "12px", right: "12px",
                         background: "white", border: "1px solid var(--border)", borderRadius: "10px",
-                        boxShadow: "0 4px 20px rgba(0,0,0,0.10)", overflow: "hidden", zIndex: 50,
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 50,
                     }}>
+                        {/* Notifications */}
+                        <NotificationBell variant="popup-item" />
+
                         {/* Settings link */}
                         <Link href="/settings" onClick={() => setMenuOpen(false)} style={{ textDecoration: "none" }}>
                             <div style={{
@@ -295,6 +298,7 @@ export default function Sidebar({
                             display: "flex", alignItems: "center", gap: "8px", width: "100%",
                             padding: "11px 14px", background: "none", border: "none", cursor: "pointer",
                             fontSize: "13.5px", color: "var(--danger)", fontWeight: 500, textAlign: "left",
+                            borderBottomLeftRadius: "10px", borderBottomRightRadius: "10px",
                         }}
                             onMouseEnter={(e) => (e.currentTarget.style.background = "#FEF2F2")}
                             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}>

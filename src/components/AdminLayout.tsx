@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { apiAdminMe, adminClearToken } from "@/lib/adminApi";
 import {
     LayoutDashboard, Store, CreditCard, Users2, BarChart2,
-    ScrollText, Settings, LogOut, ChevronRight, ShieldCheck,
+    ScrollText, Settings, LogOut, ChevronRight, Bell,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -14,6 +14,7 @@ const NAV = [
     { label: "Restaurants", href: "/admin/restaurants", icon: Store },
     { label: "Subscriptions", href: "/admin/subscriptions", icon: CreditCard },
     { label: "Affiliates", href: "/admin/affiliates", icon: Users2 },
+    { label: "Notifications", href: "/admin/notifications", icon: Bell },
     { label: "Analytics", href: "/admin/analytics", icon: BarChart2 },
     { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText },
     { label: "Settings", href: "/admin/settings", icon: Settings },
@@ -73,9 +74,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         {globalLogo ? (
                             <img src={globalLogo.startsWith("http") ? globalLogo : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787"}${globalLogo}`} alt="Spryon Admin" style={{ width: 32, height: 32, borderRadius: 9, objectFit: "cover", flexShrink: 0 }} />
                         ) : (
-                            <div style={{ width: 32, height: 32, background: "linear-gradient(135deg, #34D399, #059669)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <ShieldCheck size={17} color="white" />
-                            </div>
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src="/logo.png" alt="Spryon" style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, objectFit: "cover" }} />
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 14, fontWeight: 800, color: "#F1F5F9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{globalTitle || "Spryon"}</div>

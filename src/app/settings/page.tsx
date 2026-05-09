@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { apiMe, apiUploadImage, apiUpdateRestaurantLogo, apiUpdateRestaurantConfig, apiChangePassword, apiUpdateUserProfile, apiResetMenuData, clearToken } from "@/lib/api";
+import { apiMe, apiUploadImage, apiUpdateRestaurantLogo, apiUpdateRestaurantConfig, apiChangePassword, apiUpdateUserProfile, apiResetMenuData, apiResetAnalyticsData, clearToken } from "@/lib/api";
+import { compressImage } from "@/lib/compressImage";
 import { useRouter } from "next/navigation";
 import {
     Store, User, Palette, ShieldAlert,
@@ -28,6 +29,13 @@ const CURRENCIES = [
     { code: "AUD", symbol: "A$", label: "Australian Dollar" },
     { code: "JPY", symbol: "¥", label: "Japanese Yen" },
 ];
+
+function getImgUrl(url: string | null) {
+    if (!url) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('https//') || url.startsWith('http//')) return url.replace('//', '://');
+    return `${API}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 const ACCENT_PRESETS = ["#34D399", "#60A5FA", "#F59E0B", "#F87171", "#A78BFA", "#FB923C", "#EC4899"];
 const BG_PRESETS = ["#F7F8FA", "#FFFFFF", "#0F172A", "#FFF9F0", "#F0FDF4", "#EFF6FF"];
@@ -116,6 +124,20 @@ export default function SettingsPage() {
     const [profileSaved, setProfileSaved] = useState(false);
     const [profileMsg, setProfileMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+    // Analytics Reset
+    const [analyticsResetCode, setAnalyticsResetCode] = useState<string | null>(null);
+    const [analyticsInputCode, setAnalyticsInputCode] = useState("");
+    const [analyticsResetError, setAnalyticsResetError] = useState("");
+    const [analyticsResetting, setAnalyticsResetting] = useState(false);
+    const [analyticsResetSuccess, setAnalyticsResetSuccess] = useState("");
+
+    // Menu Reset
+    const [menuResetCode, setMenuResetCode] = useState<string | null>(null);
+    const [menuInputCode, setMenuInputCode] = useState("");
+    const [menuResetError, setMenuResetError] = useState("");
+    const [menuResetting, setMenuResetting] = useState(false);
+    const [menuResetSuccess, setMenuResetSuccess] = useState("");
+
     useEffect(() => {
         apiMe().then((res) => {
             if (res.data?.restaurant) {
@@ -160,9 +182,16 @@ export default function SettingsPage() {
         reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
         reader.readAsDataURL(file);
         setLogoUploading(true);
-        const result = await apiUploadImage(file);
-        setLogoUploading(false);
-        if (result.url) { setLogoUrl(result.url); await apiUpdateRestaurantLogo(result.url); }
+        try {
+            const compressed = await compressImage(file);
+            const result = await apiUploadImage(compressed.file);
+            if (result.url) { setLogoUrl(result.url); await apiUpdateRestaurantLogo(result.url); }
+        } catch {
+            const result = await apiUploadImage(file);
+            if (result.url) { setLogoUrl(result.url); await apiUpdateRestaurantLogo(result.url); }
+        } finally {
+            setLogoUploading(false);
+        }
     };
 
     const handleSave = async () => {
@@ -212,10 +241,58 @@ export default function SettingsPage() {
         }
     };
 
-    const handleResetMenu = async () => {
-        if (!window.confirm("This will permanently delete all menu items and categories. Continue?")) return;
-        await apiResetMenuData();
-        alert("Menu data has been reset.");
+    const initiateMenuReset = () => {
+        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        setMenuResetCode(code);
+        setMenuInputCode("");
+        setMenuResetError("");
+        setMenuResetSuccess("");
+    };
+
+    const confirmMenuReset = async () => {
+        if (!menuResetCode) return;
+        if (menuInputCode.toUpperCase() !== menuResetCode) {
+            setMenuResetError("Invalid verification code. Please try again.");
+            return;
+        }
+        setMenuResetError("");
+        setMenuResetting(true);
+        const res = await apiResetMenuData();
+        setMenuResetting(false);
+        if (res.data?.ok || res.status === 200) {
+            setMenuResetSuccess("Menu data has been successfully reset.");
+            setMenuResetCode(null);
+            setTimeout(() => setMenuResetSuccess(""), 4000);
+        } else {
+            setMenuResetError(res.error || "Failed to reset menu data");
+        }
+    };
+
+    const initiateAnalyticsReset = () => {
+        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        setAnalyticsResetCode(code);
+        setAnalyticsInputCode("");
+        setAnalyticsResetError("");
+        setAnalyticsResetSuccess("");
+    };
+
+    const confirmAnalyticsReset = async () => {
+        if (!analyticsResetCode) return;
+        if (analyticsInputCode.toUpperCase() !== analyticsResetCode) {
+            setAnalyticsResetError("Invalid verification code. Please try again.");
+            return;
+        }
+        setAnalyticsResetError("");
+        setAnalyticsResetting(true);
+        const res = await apiResetAnalyticsData();
+        setAnalyticsResetting(false);
+        if (res.data?.ok || res.status === 200) {
+            setAnalyticsResetSuccess("Analytics data has been successfully reset.");
+            setAnalyticsResetCode(null);
+            setTimeout(() => setAnalyticsResetSuccess(""), 4000);
+        } else {
+            setAnalyticsResetError(res.error || "Failed to reset analytics");
+        }
     };
 
     const handleDeleteRestaurant = () => {
@@ -327,7 +404,7 @@ export default function SettingsPage() {
                             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                                 {logoPreview || logoUrl ? (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={logoPreview ?? `${API}${logoUrl}`} alt="logo"
+                                    <img src={logoPreview ?? getImgUrl(logoUrl) ?? ""} alt="logo"
                                         style={{ width: "64px", height: "64px", borderRadius: "13px", objectFit: "cover", border: "1px solid var(--border)", flexShrink: 0 }} />
                                 ) : (
                                     <div style={{ width: "64px", height: "64px", background: "var(--accent-soft)", borderRadius: "13px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", fontWeight: 700, color: "var(--accent-dark)", border: "1px solid var(--border)", flexShrink: 0 }}>
@@ -483,14 +560,97 @@ export default function SettingsPage() {
                             </div>
                             <p style={{ fontSize: "13px", color: "var(--muted)", marginBottom: "16px" }}>These actions are <strong>permanent</strong> and cannot be undone.</p>
                             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "10px" }}>
-                                    <div>
-                                        <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#111" }}>Reset Menu Data</div>
-                                        <div style={{ fontSize: "12px", color: "#991B1B", marginTop: 2 }}>Delete all menu items and categories</div>
+                                <div style={{ padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "10px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: analyticsResetCode ? "14px" : "0" }}>
+                                        <div>
+                                            <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#111" }}>Reset Analytics Data</div>
+                                            <div style={{ fontSize: "12px", color: "#991B1B", marginTop: 2 }}>This action will permanently delete all analytics data and cannot be undone.</div>
+                                            {analyticsResetSuccess && <div style={{ fontSize: "12.5px", color: "#16A34A", marginTop: "6px", fontWeight: 500 }}>{analyticsResetSuccess}</div>}
+                                        </div>
+                                        {!analyticsResetCode && (
+                                            <button onClick={initiateAnalyticsReset} style={{ background: "white", color: "#DC2626", border: "1px solid #FECACA", padding: "7px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 500, fontFamily: "inherit", flexShrink: 0 }}>
+                                                Reset Analytics
+                                            </button>
+                                        )}
                                     </div>
-                                    <button onClick={handleResetMenu} style={{ background: "white", color: "#DC2626", border: "1px solid #FECACA", padding: "7px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 500, fontFamily: "inherit" }}>
-                                        Reset Menu
-                                    </button>
+                                    
+                                    {analyticsResetCode && (
+                                        <div style={{ background: "white", padding: "14px", borderRadius: "8px", border: "1px dashed #FECACA" }}>
+                                            <div style={{ fontSize: "13px", marginBottom: "8px" }}>
+                                                Type the verification code <strong style={{ letterSpacing: "2px", background: "#F1F5F9", padding: "2px 6px", borderRadius: "4px" }}>{analyticsResetCode}</strong> to confirm.
+                                            </div>
+                                            <div style={{ display: "flex", gap: "8px" }}>
+                                                <input 
+                                                    className="input" 
+                                                    style={{ width: "150px", fontSize: "13px", textTransform: "uppercase" }} 
+                                                    placeholder="Enter code" 
+                                                    value={analyticsInputCode} 
+                                                    onChange={(e) => setAnalyticsInputCode(e.target.value)} 
+                                                />
+                                                <button 
+                                                    onClick={confirmAnalyticsReset} 
+                                                    disabled={analyticsResetting}
+                                                    style={{ background: "#DC2626", color: "white", border: "none", padding: "7px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}
+                                                >
+                                                    {analyticsResetting ? <><Spinner /> Resetting…</> : "Confirm"}
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setAnalyticsResetCode(null); setAnalyticsInputCode(""); setAnalyticsResetError(""); }} 
+                                                    disabled={analyticsResetting}
+                                                    style={{ background: "#F1F5F9", color: "#475569", border: "none", padding: "7px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: 500 }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                            {analyticsResetError && <div style={{ fontSize: "12px", color: "#DC2626", marginTop: "6px", fontWeight: 500 }}>{analyticsResetError}</div>}
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "10px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: menuResetCode ? "14px" : "0" }}>
+                                        <div>
+                                            <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#111" }}>Reset Menu Data</div>
+                                            <div style={{ fontSize: "12px", color: "#991B1B", marginTop: 2 }}>Delete all menu items and categories</div>
+                                            {menuResetSuccess && <div style={{ fontSize: "12.5px", color: "#16A34A", marginTop: "6px", fontWeight: 500 }}>{menuResetSuccess}</div>}
+                                        </div>
+                                        {!menuResetCode && (
+                                            <button onClick={initiateMenuReset} style={{ background: "white", color: "#DC2626", border: "1px solid #FECACA", padding: "7px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 500, fontFamily: "inherit", flexShrink: 0 }}>
+                                                Reset Menu
+                                            </button>
+                                        )}
+                                    </div>
+                                    
+                                    {menuResetCode && (
+                                        <div style={{ background: "white", padding: "14px", borderRadius: "8px", border: "1px dashed #FECACA" }}>
+                                            <div style={{ fontSize: "13px", marginBottom: "8px" }}>
+                                                Type the verification code <strong style={{ letterSpacing: "2px", background: "#F1F5F9", padding: "2px 6px", borderRadius: "4px" }}>{menuResetCode}</strong> to confirm.
+                                            </div>
+                                            <div style={{ display: "flex", gap: "8px" }}>
+                                                <input 
+                                                    className="input" 
+                                                    style={{ width: "150px", fontSize: "13px", textTransform: "uppercase" }} 
+                                                    placeholder="Enter code" 
+                                                    value={menuInputCode} 
+                                                    onChange={(e) => setMenuInputCode(e.target.value)} 
+                                                />
+                                                <button 
+                                                    onClick={confirmMenuReset} 
+                                                    disabled={menuResetting}
+                                                    style={{ background: "#DC2626", color: "white", border: "none", padding: "7px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: 500, display: "flex", alignItems: "center", gap: "6px" }}
+                                                >
+                                                    {menuResetting ? <><Spinner /> Resetting…</> : "Confirm"}
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setMenuResetCode(null); setMenuInputCode(""); setMenuResetError(""); }} 
+                                                    disabled={menuResetting}
+                                                    style={{ background: "#F1F5F9", color: "#475569", border: "none", padding: "7px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: 500 }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                            {menuResetError && <div style={{ fontSize: "12px", color: "#DC2626", marginTop: "6px", fontWeight: 500 }}>{menuResetError}</div>}
+                                        </div>
+                                    )}
                                 </div>
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "10px" }}>
                                     <div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import { getToken, apiUploadImage, apiMe, apiUpdateRestaurantConfig, authHeaders } from "@/lib/api";
+import { compressImage, CompressionResult } from "@/lib/compressImage";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
 
@@ -30,6 +31,18 @@ const ALLERGENS_LIST = [
 ];
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
+const CURRENCY_SYMBOLS: Record<string, string> = {
+    USD: "$", EUR: "€", GBP: "£", INR: "₹", AED: "د.إ", SGD: "S$", AUD: "A$", JPY: "¥"
+};
+function getCurrencySymbol(code?: string | null) { return CURRENCY_SYMBOLS[code ?? "USD"] ?? code ?? "$"; }
+
+function getImgUrl(url: string | null) {
+    if (!url) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('https//') || url.startsWith('http//')) return url.replace('//', '://');
+    return `${API}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 function Spinner() {
     return <span style={{ width: "14px", height: "14px", border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "white", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />;
 }
@@ -171,7 +184,7 @@ const SEC_LABEL: React.CSSProperties = { fontSize: "11px", fontWeight: 700, colo
 
 function DishModal({
     mode, title, form, setForm, imgPreview, onImgChange, fileRef,
-    onSave, onDelete, onClose, saving, error, categories,
+    onSave, onDelete, onClose, saving, error, categories, compInfo, currency,
 }: {
     mode: "add" | "edit";
     title: string;
@@ -186,6 +199,8 @@ function DishModal({
     saving: boolean;
     error: string;
     categories: Category[];
+    compInfo?: import('@/lib/compressImage').CompressionResult | null;
+    currency?: string;
 }) {
     const VEG_OPTS: { v: 0 | 1 | 2; label: string; color: string }[] = [
         { v: 0, label: "Not set", color: "#E5E7EB" },
@@ -237,7 +252,7 @@ function DishModal({
                             <div>
                                 <label style={LABEL}>Price <span style={{ color: "#EF4444" }}>*</span></label>
                                 <div style={{ position: "relative" }}>
-                                    <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#9CA3AF", fontSize: "14px", pointerEvents: "none" }}>$</span>
+                                    <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#9CA3AF", fontSize: "14px", pointerEvents: "none" }}>{getCurrencySymbol(currency)}</span>
                                     <input style={{ ...INPUT, paddingLeft: "24px" }} type="number" step="0.01" placeholder="0.00" value={form.price}
                                         onChange={(e) => setField("price", e.target.value)}
                                         onFocus={focusStyle} onBlur={blurStyle} />
@@ -288,7 +303,7 @@ function DishModal({
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                                     </div>
                                     <span style={{ fontSize: "13.5px", color: "#6B7280", fontWeight: 500 }}>Click to upload a photo</span>
-                                    <span style={{ fontSize: "12px", color: "#9CA3AF" }}>PNG, JPG up to 5MB</span>
+                                    <span style={{ fontSize: "12px", color: "#9CA3AF" }}>PNG, JPG, WebP up to 5MB</span>
                                 </>
                             )}
                         </div>
@@ -392,7 +407,7 @@ function CategoryDishRow({ item, onEdit, onDelete, onToggle, saving }: {
     onEdit: () => void; onDelete: () => void;
     onToggle: () => void; saving: boolean;
 }) {
-    const imgUrl = item.image_url ? `${API}${item.image_url}` : null;
+    const imgUrl = getImgUrl(item.image_url);
     const available = item.available === 1;
     return (
         <div style={{
@@ -414,7 +429,7 @@ function CategoryDishRow({ item, onEdit, onDelete, onToggle, saving }: {
             <span style={{ flex: 1, fontWeight: 500, fontSize: "14px", color: "#111827", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
 
             {/* Price */}
-            <span style={{ fontWeight: 600, fontSize: "13.5px", color: "#374151", flexShrink: 0, minWidth: "44px", textAlign: "right" }}>${item.price.toFixed(2)}</span>
+            <span style={{ fontWeight: 600, fontSize: "13.5px", color: "#374151", flexShrink: 0, minWidth: "44px", textAlign: "right" }}>{getCurrencySymbol((item as any)._currency)}{item.price.toFixed(2)}</span>
 
             {/* Availability */}
             <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, minWidth: "80px" }}>
@@ -446,7 +461,7 @@ function DishCard({ item, onEdit, onDelete, onToggle, saving }: {
     onEdit: () => void; onDelete: () => void;
     onToggle: () => void; saving: boolean;
 }) {
-    const imgUrl = item.image_url ? `${API}${item.image_url}` : null;
+    const imgUrl = getImgUrl(item.image_url);
     const available = item.available === 1;
     const vegColor = item.is_veg === 1 ? "#22C55E" : item.is_veg === 2 ? "#EF4444" : null;
     return (
@@ -480,7 +495,7 @@ function DishCard({ item, onEdit, onDelete, onToggle, saving }: {
             </div>
 
             {/* Price */}
-            <span style={{ fontWeight: 700, fontSize: "15px", color: "#111827", flexShrink: 0, minWidth: "52px", textAlign: "right" }}>${item.price.toFixed(2)}</span>
+            <span style={{ fontWeight: 700, fontSize: "15px", color: "#111827", flexShrink: 0, minWidth: "52px", textAlign: "right" }}>{getCurrencySymbol((item as any)._currency)}{item.price.toFixed(2)}</span>
 
             {/* Status */}
             <div style={{ display: "flex", alignItems: "center", gap: "5px", flexShrink: 0, minWidth: "88px" }}>
@@ -579,6 +594,7 @@ function MenuContent() {
     const [formError, setFormError] = useState("");
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imageCompInfo, setImageCompInfo] = useState<CompressionResult | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Edit dish modal
@@ -586,6 +602,7 @@ function MenuContent() {
     const [editForm, setEditForm] = useState(emptyForm());
     const [editImageFile, setEditImageFile] = useState<File | null>(null);
     const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+    const [editImageCompInfo, setEditImageCompInfo] = useState<CompressionResult | null>(null);
     const [editSaving, setEditSaving] = useState(false);
     const [editError, setEditError] = useState("");
     const editFileInputRef = useRef<HTMLInputElement>(null);
@@ -609,6 +626,7 @@ function MenuContent() {
     const [pageDesc, setPageDesc] = useState("");
     const [restaurantName, setRestaurantName] = useState("");
     const [restaurantSlug, setRestaurantSlug] = useState("");
+    const [currency, setCurrency] = useState("USD");
     const [linkCopied, setLinkCopied] = useState(false);
     // Social links
     const [socials, setSocials] = useState({
@@ -627,9 +645,9 @@ function MenuContent() {
         try {
             const res = await fetch(`${API}/api/menu`, { headers: authHeaders() });
             const data = await res.json() as { ok: boolean; items: MenuItem[]; categories: Category[] };
-            if (data.ok) { setItems(data.items); setCategories(data.categories); }
+            if (data.ok) { setItems(data.items.map(i => ({...i, _currency: currency} as any))); setCategories(data.categories); }
         } finally { setLoading(false); }
-    }, [token]);
+    }, [token, currency]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -654,6 +672,8 @@ function MenuContent() {
                 if (r.name) setRestaurantName(r.name);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((r as any).slug) setRestaurantSlug((r as any).slug);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if ((r as any).currency) setCurrency((r as any).currency);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((r as any).social_links) setSocials((prev) => ({ ...prev, ...(r as any).social_links }));
             }
@@ -685,7 +705,7 @@ function MenuContent() {
         }
         const res = await fetch(`${API}/api/menu`, { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ name: form.name, description: form.description || undefined, price: parseFloat(form.price), categoryId: form.categoryId || undefined, available: form.available, image_url, is_veg: form.is_veg, allergens: form.allergens }) });
         const data = await res.json() as { ok: boolean };
-        if (data.ok) { setShowAdd(false); setForm(emptyForm()); setImageFile(null); setImagePreview(null); await load(); }
+        if (data.ok) { setShowAdd(false); setForm(emptyForm()); setImageFile(null); setImagePreview(null); setImageCompInfo(null); await load(); }
         else setFormError("Failed to add item");
         setFormSaving(false);
     };
@@ -1228,9 +1248,31 @@ function MenuContent() {
                 <DishModal mode="add" title="Add Dish"
                     form={form} setForm={setForm}
                     imgPreview={imagePreview}
-                    onImgChange={(e) => { const file = e.target.files?.[0]; if (!file) return; setImageFile(file); const r = new FileReader(); r.onload = (ev) => setImagePreview(ev.target?.result as string); r.readAsDataURL(file); }}
-                    fileRef={fileInputRef} categories={categories}
-                    onSave={addItem} onClose={() => { setShowAdd(false); setForm(emptyForm()); setImageFile(null); setImagePreview(null); }}
+                    compInfo={imageCompInfo}
+                    onImgChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        // Show a fast preview immediately
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                        // Compress in background then swap the file + update preview
+                        try {
+                            const result = await compressImage(file);
+                            setImageFile(result.file);
+                            setImageCompInfo(result);
+                            // Update preview to the compressed version
+                            const r2 = new FileReader();
+                            r2.onload = (ev) => setImagePreview(ev.target?.result as string);
+                            r2.readAsDataURL(result.file);
+                        } catch {
+                            // Fallback: use original
+                            setImageFile(file);
+                            setImageCompInfo(null);
+                        }
+                    }}
+                    fileRef={fileInputRef} categories={categories} currency={currency}
+                    onSave={addItem} onClose={() => { setShowAdd(false); setForm(emptyForm()); setImageFile(null); setImagePreview(null); setImageCompInfo(null); }}
                     saving={formSaving} error={formError} />
             )}
 
@@ -1238,12 +1280,30 @@ function MenuContent() {
             {editTarget && (
                 <DishModal mode="edit" title="Edit Dish"
                     form={editForm} setForm={setEditForm}
-                    imgPreview={editImagePreview ?? (editTarget.image_url ? `${API}${editTarget.image_url}` : null)}
-                    onImgChange={(e) => { const file = e.target.files?.[0]; if (!file) return; setEditImageFile(file); const r = new FileReader(); r.onload = (ev) => setEditImagePreview(ev.target?.result as string); r.readAsDataURL(file); }}
-                    fileRef={editFileInputRef} categories={categories}
+                    imgPreview={editImagePreview ?? (editTarget.image_url ? (editTarget.image_url.startsWith('http') ? editTarget.image_url : `${API}${editTarget.image_url}`) : null)}
+                    compInfo={editImageCompInfo}
+                    onImgChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setEditImagePreview(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                        try {
+                            const result = await compressImage(file);
+                            setEditImageFile(result.file);
+                            setEditImageCompInfo(result);
+                            const r2 = new FileReader();
+                            r2.onload = (ev) => setEditImagePreview(ev.target?.result as string);
+                            r2.readAsDataURL(result.file);
+                        } catch {
+                            setEditImageFile(file);
+                            setEditImageCompInfo(null);
+                        }
+                    }}
+                    fileRef={editFileInputRef} categories={categories} currency={currency}
                     onSave={saveEdit}
                     onDelete={async () => { if (!editTarget) return; await deleteItem(editTarget.id); setEditTarget(null); }}
-                    onClose={() => setEditTarget(null)}
+                    onClose={() => { setEditTarget(null); setEditImageCompInfo(null); }}
                     saving={editSaving} error={editError} />
             )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
     apiLogin,
@@ -10,6 +10,8 @@ import {
     apiResendOtp,
     setToken,
 } from "@/lib/api";
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8788";
 
 type AuthState = "login" | "login-otp" | "forgot" | "reset-otp" | "new-password" | "pw-success";
 
@@ -87,6 +89,17 @@ const primaryBtn = (enabled: boolean): React.CSSProperties => ({
 
 const linkBtn: React.CSSProperties = { background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "13px", color: "#6B7280", padding: 0 };
 
+// ─── Sanitizers ───────────────────────────────────────────────────────────────
+/** Strip HTML/script tags and javascript: URIs from any string */
+const stripTags = (v: string) =>
+    v.replace(/<[^>]*>/g, "").replace(/javascript\s*:/gi, "").replace(/on\w+\s*=/gi, "");
+/** Sanitize email: strip tags, lowercase, trim */
+const sanitizeEmail = (v: string) => stripTags(v).toLowerCase().trim();
+/** Sanitize phone: only digits, spaces, +, -, (, ) */
+const sanitizePhone = (v: string) => v.replace(/[^0-9\s+\-().]/g, "");
+/** Sanitize plain text (names, places): strip tags, trim start */
+const sanitizeText = (v: string) => stripTags(v).replace(/[<>"]/g, "");
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function LoginFlow() {
     const router = useRouter();
@@ -102,6 +115,20 @@ export default function LoginFlow() {
     const [resent, setResent] = useState(false);
     const [animating, setAnimating] = useState(false);
     const [direction, setDirection] = useState<"forward" | "back">("forward");
+    const [globalLogo, setGlobalLogo] = useState<string | null>(null);
+    const [globalTitle, setGlobalTitle] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetch(`${API}/api/public/settings`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok && data.settings) {
+                    if (data.settings.global_logo_url) setGlobalLogo(data.settings.global_logo_url);
+                    if (data.settings.global_title) setGlobalTitle(data.settings.global_title);
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     const go = useCallback((next: AuthState, dir: "forward" | "back" = "forward") => {
         setDirection(dir); setAnimating(true); setErrors({});
@@ -187,10 +214,14 @@ export default function LoginFlow() {
         <div style={{ minHeight: "100vh", background: "#F7F8FA", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", fontFamily: "'Inter', -apple-system, sans-serif" }}>
             {/* Logo */}
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "28px" }}>
-                <div style={{ width: "32px", height: "32px", background: "#34D399", borderRadius: "9px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
-                </div>
-                <span style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.3px" }}>Spryon</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={globalLogo ? (globalLogo.startsWith("http") ? globalLogo : `${API}${globalLogo}`) : "/logo.png"}
+                    alt="Spryon"
+                    width={32} height={32}
+                    style={{ borderRadius: "9px", flexShrink: 0, objectFit: "cover" }}
+                />
+                <span style={{ fontSize: "18px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.3px" }}>{globalTitle || "Spryon"}</span>
             </div>
 
             {/* Card */}
@@ -203,7 +234,7 @@ export default function LoginFlow() {
                             <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.4px", marginBottom: "4px" }}>Sign in to Spryon</h2>
                             <p style={{ fontSize: "13.5px", color: "#6B7280", marginBottom: "24px" }}>Access your restaurant dashboard.</p>
                             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                                <Field label="Email address" type="email" placeholder="you@restaurant.com" value={email} error={errors.email} onChange={(v) => { setEmail(v); clearApiErr(); }} autoFocus />
+                                <Field label="Email address" type="email" placeholder="you@restaurant.com" value={email} error={errors.email} onChange={(v) => { setEmail(sanitizeEmail(v)); clearApiErr(); }} autoFocus />
                                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                         <label style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Password</label>
@@ -240,7 +271,6 @@ export default function LoginFlow() {
                                 </div>
                                 <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.4px", marginBottom: "6px" }}>Verify your email</h2>
                                 <p style={{ fontSize: "13.5px", color: "#6B7280" }}>6-digit code sent to <strong style={{ color: "#0F172A" }}>{email}</strong></p>
-                                <p style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "4px" }}>Check the Worker terminal during local dev.</p>
                             </div>
                             <OtpInput value={loginOtp} onChange={setLoginOtp} />
                             {errors.api && <ApiError msg={errors.api} />}
@@ -259,7 +289,7 @@ export default function LoginFlow() {
                         <>
                             <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.4px", marginBottom: "4px" }}>Reset your password</h2>
                             <p style={{ fontSize: "13.5px", color: "#6B7280", marginBottom: "24px" }}>Enter your account email to receive a reset code.</p>
-                            <Field label="Email address" type="email" placeholder="you@restaurant.com" value={email} error={errors.email} onChange={(v) => { setEmail(v); clearApiErr(); }} autoFocus />
+                            <Field label="Email address" type="email" placeholder="you@restaurant.com" value={email} error={errors.email} onChange={(v) => { setEmail(sanitizeEmail(v)); clearApiErr(); }} autoFocus />
                             <button onClick={handleForgot} disabled={loading} style={primaryBtn(!loading)}>
                                 {loading ? <><Spinner /> Sending...</> : "Send reset code →"}
                             </button>
@@ -275,7 +305,6 @@ export default function LoginFlow() {
                             <div style={{ textAlign: "center", marginBottom: "24px" }}>
                                 <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.4px", marginBottom: "6px" }}>Enter reset code</h2>
                                 <p style={{ fontSize: "13.5px", color: "#6B7280" }}>6-digit code sent to <strong style={{ color: "#0F172A" }}>{email}</strong></p>
-                                <p style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "4px" }}>Check the Worker terminal during local dev.</p>
                             </div>
                             <OtpInput value={resetOtp} onChange={setResetOtp} />
                             {errors.api && <ApiError msg={errors.api} />}
@@ -329,8 +358,8 @@ export default function LoginFlow() {
             </div>
 
             <p style={{ fontSize: "12px", color: "#9CA3AF", marginTop: "24px", textAlign: "center" }}>
-                <a href="#" style={{ color: "#6B7280", textDecoration: "underline" }}>Terms</a>{" · "}
-                <a href="#" style={{ color: "#6B7280", textDecoration: "underline" }}>Privacy</a>
+                <a href="/terms" style={{ color: "#6B7280", textDecoration: "underline" }}>Terms</a>{" · "}
+                <a href="/privacy" style={{ color: "#6B7280", textDecoration: "underline" }}>Privacy</a>
             </p>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } } * { box-sizing: border-box; }`}</style>
         </div>

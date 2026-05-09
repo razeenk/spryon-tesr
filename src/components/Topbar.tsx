@@ -32,7 +32,9 @@ export default function Topbar({
                     {subtitle && <div className="topbar-subtitle">{subtitle}</div>}
                 </div>
             </div>
-            {right && <div className="topbar-right">{right}</div>}
+            <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {right}
+            </div>
         </header>
     );
 }

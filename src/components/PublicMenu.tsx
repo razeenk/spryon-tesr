@@ -41,6 +41,7 @@ interface Category { id: string; name: string; }
 interface MenuItem {
     id: string; name: string; description: string | null; price: number;
     available: number; scan_count: number; image_url: string | null;
+    images?: string[];
     category_id: string | null; category_name: string | null;
     is_veg?: number; allergens?: string[];
 }
@@ -57,6 +58,7 @@ interface Restaurant {
     id: string; name: string; city: string | null;
     logo_url: string | null; social_links: SocialLinks | null; theme: Theme | null;
     is_open?: number; page_title?: string | null; page_description?: string | null;
+    currency?: string | null;
 }
 
 interface MenuData {
@@ -68,7 +70,19 @@ interface MenuData {
     subscription_expired?: boolean;
 }
 
-const fmtPrice = (p: number) => `$${p.toFixed(2)}`;
+const CURRENCY_SYMBOLS: Record<string, string> = {
+    USD: "$", EUR: "€", GBP: "£", INR: "₹", AED: "د.إ", SGD: "S$", AUD: "A$", JPY: "¥"
+};
+function getCurrencySymbol(code?: string | null) { return CURRENCY_SYMBOLS[code ?? "USD"] ?? code ?? "$"; }
+
+const fmtPrice = (p: number, sym: string) => `${sym}${p.toFixed(2)}`;
+
+function getImgUrl(url: string | null) {
+    if (!url) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('https//') || url.startsWith('http//')) return url.replace('//', '://');
+    return `${API}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 function buildUtmUrl(url: string, slug: string) {
     try {
@@ -104,6 +118,8 @@ const SOCIAL: Record<string, React.ReactNode> = {
 };
 
 function ItemModal({ item, accent, restaurantName, onClose }: { item: MenuItem; accent: string; restaurantName: string; onClose: () => void }) {
+    const [showAllergens, setShowAllergens] = useState(false);
+
     useEffect(() => {
         const scrollY = window.scrollY;
         const prev = {
@@ -126,26 +142,34 @@ function ItemModal({ item, accent, restaurantName, onClose }: { item: MenuItem; 
         };
     }, []);
 
-    const marqueeText = `${restaurantName} ✦ `;
-    const repeated = marqueeText.repeat(8);
-
     return (
         <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "fadein 0.15s ease" }}>
-            <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ background: "white", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: "720px", overflowY: "auto", maxHeight: "92vh", overscrollBehavior: "contain", animation: "slideup 0.2s ease" }}>
-                {/* Marquee banner */}
-                <div style={{ background: accent, overflow: "hidden", padding: "9px 0", position: "relative" }}>
-                    <div style={{ display: "flex", whiteSpace: "nowrap", animation: "marquee 14s linear infinite", willChange: "transform" }}>
-                        <span style={{ fontSize: "13px", fontWeight: 700, color: "white", letterSpacing: "0.06em", opacity: 0.92, paddingRight: "0" }}>{repeated}</span>
-                        <span style={{ fontSize: "13px", fontWeight: 700, color: "white", letterSpacing: "0.06em", opacity: 0.92 }}>{repeated}</span>
+            <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ background: "white", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: "720px", overflowY: "auto", height: "85vh", display: "flex", flexDirection: "column", overscrollBehavior: "contain", animation: "slideup 0.2s ease" }}>
+                {(item.images && item.images.length > 0) ? (
+                    <div style={{ position: "relative" }}>
+                        <div style={{ display: "flex", overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch" }}>
+                            {item.images.map((img, i) => (
+                                <div key={i} style={{ width: "100%", height: "320px", flexShrink: 0, background: "#F3F3F3", overflow: "hidden", scrollSnapAlign: "start" }}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={getImgUrl(img) ?? ""} alt={`${item.name} - ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: item.available ? 1 : 0.5 }} />
+                                </div>
+                            ))}
+                        </div>
+                        {item.images.length > 1 && (
+                            <div style={{ position: "absolute", bottom: "12px", left: "0", right: "0", display: "flex", justifyContent: "center", gap: "6px", pointerEvents: "none" }}>
+                                {item.images.map((_, i) => (
+                                    <div key={i} style={{ width: "6px", height: "6px", borderRadius: "50%", background: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.3)", opacity: 0.8 }} />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </div>
-                {item.image_url && (
-                    <div style={{ height: "210px", background: "#F3F3F3", overflow: "hidden" }}>
+                ) : item.image_url ? (
+                    <div style={{ height: "320px", flexShrink: 0, background: "#F3F3F3", overflow: "hidden" }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`${API}${item.image_url}`} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: item.available ? 1 : 0.5 }} />
+                        <img src={getImgUrl(item.image_url) ?? ""} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: item.available ? 1 : 0.5 }} />
                     </div>
-                )}
-                <div style={{ padding: "22px 22px 36px" }}>
+                ) : null}
+                <div style={{ padding: "22px 22px 36px", flex: 1, display: "flex", flexDirection: "column" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "6px" }}>
                         <h2 style={{ fontSize: "18px", fontWeight: 600, color: item.available ? "#111" : "#999", lineHeight: 1.3, margin: 0, display: "flex", alignItems: "center", gap: "7px" }}>
                             {item.is_veg === 1 && (
@@ -162,7 +186,7 @@ function ItemModal({ item, accent, restaurantName, onClose }: { item: MenuItem; 
                             )}
                             {item.name}
                         </h2>
-                        <span style={{ fontSize: "18px", fontWeight: 700, color: item.available ? accent : "#BBB", flexShrink: 0 }}>{fmtPrice(item.price)}</span>
+                        <span style={{ fontSize: "18px", fontWeight: 700, color: item.available ? accent : "#BBB", flexShrink: 0 }}>{fmtPrice(item.price, getCurrencySymbol((item as any)._currency))}</span>
                     </div>
                     {item.category_name && (
                         <p style={{ margin: "0 0 10px", fontSize: "11px", fontWeight: 600, color: "#AAA", textTransform: "uppercase", letterSpacing: "0.07em" }}>{item.category_name}</p>
@@ -172,23 +196,30 @@ function ItemModal({ item, accent, restaurantName, onClose }: { item: MenuItem; 
                     )}
                     {/* Allergens in modal */}
                     {item.allergens && item.allergens.length > 0 && (
-                        <div style={{ marginTop: "14px", padding: "12px 14px", background: "#FAFAFA", borderRadius: "10px", border: "1px solid #EFEFEF" }}>
-                            <div style={{ fontSize: "10.5px", fontWeight: 700, color: "#AAA", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "8px" }}>Contains allergens</div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                {item.allergens.map((a) => ALLERGENS[a] ? (
-                                    <span key={a} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", background: "white", border: "1px solid #E8E8E8", borderRadius: "8px", fontSize: "12.5px", fontWeight: 500, color: "#555" }}>
-                                        {ALLERGENS[a]} {a.charAt(0).toUpperCase() + a.slice(1)}
-                                    </span>
-                                ) : null)}
-                            </div>
+                        <div style={{ marginTop: "14px", background: "#FAFAFA", borderRadius: "10px", border: "1px solid #EFEFEF", overflow: "hidden" }}>
+                            <button onClick={() => setShowAllergens(!showAllergens)} style={{ width: "100%", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                                <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#AAA", textTransform: "uppercase", letterSpacing: "0.07em" }}>Contains allergens</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#AAA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showAllergens ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}><polyline points="6 9 12 15 18 9" /></svg>
+                            </button>
+                            {showAllergens && (
+                                <div style={{ padding: "0 14px 14px", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                                    {item.allergens.map((a) => ALLERGENS[a] ? (
+                                        <span key={a} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 10px", background: "white", border: "1px solid #E8E8E8", borderRadius: "8px", fontSize: "12.5px", fontWeight: 500, color: "#555" }}>
+                                            {ALLERGENS[a]} {a.charAt(0).toUpperCase() + a.slice(1)}
+                                        </span>
+                                    ) : null)}
+                                </div>
+                            )}
                         </div>
                     )}
                     {!item.available && (
                         <p style={{ margin: "14px 0 0", fontSize: "13px", color: "#999", background: "#F5F5F5", borderRadius: "8px", padding: "9px 12px" }}>Currently unavailable.</p>
                     )}
-                    <button onClick={onClose} style={{ marginTop: "22px", width: "100%", padding: "12px", background: "white", border: "1px solid #E0E0E0", borderRadius: "12px", fontSize: "14px", fontWeight: 500, color: "#444", cursor: "pointer", fontFamily: "inherit" }}>
-                        Close
-                    </button>
+                    <div style={{ marginTop: "auto", paddingTop: "20px" }}>
+                        <button onClick={onClose} style={{ width: "100%", padding: "12px", background: "white", border: "1px solid #E0E0E0", borderRadius: "12px", fontSize: "14px", fontWeight: 500, color: "#444", cursor: "pointer", fontFamily: "inherit" }}>
+                            Close
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -217,6 +248,8 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
                 const json = await res.json() as MenuData & { ok: boolean; error?: string };
                 if (!res.ok || !json.ok) { setError(json.error ?? "Menu not found"); return; }
                 if (json.subscription_expired === true) { setError("MENU_UNAVAILABLE_SUB"); return; }
+                const currStr = json.restaurant?.currency ?? "USD";
+                json.items = json.items.map(i => ({...i, _currency: currStr} as any));
                 setData(json);
 
                 // Scan key with 2-hour inactivity expiry.
@@ -270,7 +303,7 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
                 link.rel = "icon";
                 document.head.appendChild(link);
             }
-            link.href = r.logo_url.startsWith("http") ? r.logo_url : `${API}${r.logo_url}`;
+            link.href = getImgUrl(r.logo_url) ?? "";
         }
 
         return () => { document.title = 'Spryon'; };
@@ -401,7 +434,7 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
                                                                     <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
                                                                         {data?.restaurant.logo_url ? (
                                                                             // eslint-disable-next-line @next/next/no-img-element
-                                                                            <img src={`${API}${data.restaurant.logo_url}`} alt={data.restaurant.name}
+                                                                            <img src={getImgUrl(data.restaurant.logo_url) ?? ""} alt={data.restaurant.name}
                                                                                 style={{ width: "72px", height: "72px", borderRadius: "14px", objectFit: "cover", border: "1px solid #E8E8E8", flexShrink: 0 }} />
                                                                         ) : (
                                                                             <div style={{ width: "72px", height: "72px", background: accent, borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -537,7 +570,7 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
                                                                                         {/* Image */}
                                                                                         {item.image_url ? (
                                                                                             <div style={{ position: "relative", flexShrink: 0 }}>
-                                                                                                <LazyImg src={`${API}${item.image_url}`} alt={item.name} size={116} />
+                                                                                                <LazyImg src={getImgUrl(item.image_url) ?? ""} alt={item.name} size={116} />
                                                                                                 {soldOut && <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.55)", borderRadius: "14px" }} />}
                                                                                             </div>
                                                                                         ) : (
@@ -570,7 +603,7 @@ export default function PublicMenuPage({ qrToken }: { qrToken: string }) {
                                                                                             )}
                                                                                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                                                                                 <span style={{ fontSize: "15px", fontWeight: 700, color: soldOut ? "#BBB" : accent, letterSpacing: "-0.2px" }}>
-                                                                                                    {fmtPrice(item.price)}
+                                                                                                    {fmtPrice(item.price, getCurrencySymbol((item as any)._currency))}
                                                                                                 </span>
                                                                                                 {soldOut && (
                                                                                                     <span style={{ fontSize: "11px", color: "#AAA", fontWeight: 500 }}>Sold out</span>

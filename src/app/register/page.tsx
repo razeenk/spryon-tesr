@@ -4,6 +4,7 @@ import RegisterFlow from "@/components/RegisterFlow";
 export const metadata = {
     title: "Sign Up — Spryon",
     description: "Create your Spryon account and start managing your restaurant digital menu.",
+    icons: { icon: "/favicon-rounded.png" },
 };
 
 export default function RegisterPage() {

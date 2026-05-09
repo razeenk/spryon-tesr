@@ -212,3 +212,37 @@ export async function apiResetMenuData() {
         method: 'POST',
     });
 }
+
+export async function apiResetAnalyticsData() {
+    return apiFetch<{ ok: boolean; message?: string }>('/api/restaurant/reset-analytics', {
+        method: 'POST',
+    });
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export interface NotificationItem {
+    id: string;
+    title: string;
+    message: string;
+    status: 'unread' | 'read';
+    created_at: number;
+}
+
+export async function apiGetNotifications() {
+    return apiFetch<{ ok: boolean; notifications: NotificationItem[] }>('/api/notifications');
+}
+
+export async function apiMarkNotificationRead(id: string) {
+    return apiFetch<{ ok: boolean }>('/api/notifications/' + id + '/read', {
+        method: 'PATCH'
+    });
+}
+
+export async function apiDeleteNotification(id: string) {
+    return apiFetch<{ ok: boolean }>('/api/notifications/' + id, {
+        method: 'DELETE'
+    });
+}
+
+// Force Next.js rebuild

@@ -70,6 +70,16 @@ export async function apiAdminAffiliateReferrals(id: string) { return adminFetch
 export async function apiAdminAnalytics() { return adminFetch<{ stats: Record<string, number>; topRestaurants: unknown[] }>('/admin/analytics'); }
 export async function apiAdminAuditLogs(page = 1) { return adminFetch<{ logs: unknown[]; total: number }>(`/admin/audit-logs?page=${page}`); }
 
+// Notifications
+export async function apiAdminCreateNotification(payload: { title: string; message: string; targetAudience: string; locationFilter?: string; specificUsers?: string[] }) {
+    return adminFetch<{ ok: boolean; sentCount: number }>('/admin/notifications', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+}
+export async function apiAdminGetNotificationHistory() { return adminFetch<{ history: { broadcast_id: string, title: string, message: string, created_at: number, sent_count: number, read_count: number }[] }>('/admin/notifications/history'); }
+export async function apiAdminDeleteBroadcast(broadcastId: string) { return adminFetch<{ ok: boolean }>(`/admin/notifications/history/${broadcastId}`, { method: 'DELETE' }); }
+
 // ─── PLATFORM SETTINGS ────────────────────────────────────────────────────────
 export async function apiAdminGetSettings() { return adminFetch<{ website_url: string; global_title?: string; global_description?: string; global_logo_url?: string; global_favicon_url?: string; global_og_image_url?: string; }>('/admin/settings'); }
 export async function apiAdminUpdateSettings(data: { website_url: string; global_title?: string; global_description?: string; global_logo_url?: string; global_favicon_url?: string; global_og_image_url?: string; }) { return adminFetch<Record<string, unknown>>('/admin/settings', { method: 'PATCH', body: JSON.stringify(data) }); }
